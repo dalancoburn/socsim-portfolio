@@ -208,9 +208,9 @@
     <span class="ed-title">Portfolio Editor</span>
   </div>
   <div class="header-right">
-    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('file-input').click()">↑ Load JSON</button>
+    <button class="btn btn-green btn-sm" onclick="loadFromGitHub()">⬇ Load from GitHub</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('file-input').click()" title="Load a portfolio.json file from your computer">↑ Load file</button>
     <input type="file" id="file-input" accept=".json" onchange="loadJSON(this)" />
-    <button class="btn btn-sm" onclick="downloadJSON()">⬇ Download JSON</button>
     <button class="btn btn-primary btn-sm" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
   </div>
 </header>
@@ -323,9 +323,9 @@
 
 <!-- ── ACTION BAR ──────────────────────────────────── -->
 <div class="action-bar">
-  <div class="action-bar-hint">Fill → ⬆ Publish to GitHub → site updates in ~60 s</div>
+  <div class="action-bar-hint">Load from GitHub → add investigation → Publish → site updates in ~60 s</div>
   <div class="action-bar-right">
-    <button class="btn btn-sm" onclick="downloadJSON()">⬇ Download JSON</button>
+    <button class="btn btn-green btn-sm" onclick="loadFromGitHub()">⬇ Load from GitHub</button>
     <button class="btn btn-primary" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
   </div>
 </div>
@@ -953,6 +953,46 @@ function downloadJSON() {
   a.href = URL.createObjectURL(new Blob([json], {type:'application/json'}));
   a.download = 'portfolio.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ═══════════════════════════════════════════════════
+   LOAD FROM GITHUB
+   Fetches the current portfolio.json straight from the repo
+   so members don't need to download/re-upload anything.
+═══════════════════════════════════════════════════ */
+async function loadFromGitHub() {
+  const owner = localStorage.getItem('gh_owner')?.trim();
+  const repo  = localStorage.getItem('gh_repo')?.trim();
+  const token = localStorage.getItem('gh_token')?.trim();
+
+  if (!owner || !repo || !token) {
+    showNotif('Set up your GitHub settings first (click ⚙ above).', 'error', 6000);
+    return;
+  }
+
+  showNotif('Loading from GitHub…', 'success', 30000);
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/src/data/portfolio.json`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' } }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      showNotif(`✗ ${err.message ?? 'Could not fetch portfolio.json'}`, 'error', 6000);
+      return;
+    }
+
+    const file = await res.json();
+    // GitHub returns content as base64 with newlines — strip them before decoding
+    const json = decodeURIComponent(escape(atob(file.content.replace(/\n/g, ''))));
+    const data = JSON.parse(json);
+    populateForm(data);
+    showNotif('✓ Loaded your current portfolio from GitHub.', 'success', 4000);
+  } catch (e) {
+    showNotif(`✗ ${e.message}`, 'error', 6000);
+  }
 }
 
 /* ═══════════════════════════════════════════════════

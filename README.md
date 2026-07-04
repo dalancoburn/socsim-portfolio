@@ -4,7 +4,7 @@ A personal case-study portfolio for WDLabs / SOCSIM members. You own the content
 
 ---
 
-## Member setup — five steps
+## Member setup — four steps
 
 **1. Create your repo**
 Click **"Use this template"** (green button, top-right) → name it anything → create repository.
@@ -12,32 +12,46 @@ Click **"Use this template"** (green button, top-right) → name it anything →
 **2. Enable GitHub Pages**
 Go to your repo → **Settings** → **Pages** → under *Build and deployment* set **Source: GitHub Actions** → save.
 
-**3. Fill in your portfolio**
-Open `editor.html` in your browser (double-click the file — no server needed).
-- Fill in your **Profile** (name, role, tagline, links).
-- Add one or more **Case Studies** using the form.
-- Click **⬇ Download portfolio.json**.
+**3. Create a GitHub Personal Access Token**
+Go to **github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)** → Generate new token.
+- Name: `SOCSIM Portfolio Editor`
+- Expiry: 90 days (or no expiry)
+- Scope: tick **repo**
+- Copy the token — you only see it once.
 
-**4. Upload your data**
-In your repo on GitHub:
-- Navigate to `src/data/`
-- Click `portfolio.json`
-- Click the **pencil icon** (Edit)
-- Click the **three dots → Upload file** — drag your downloaded `portfolio.json` onto the page
-- Scroll down → click **Commit changes**
-
-**5. Wait ~60 seconds**
-GitHub Actions builds and deploys automatically. Your portfolio is live at:
+**4. Set up the editor (one time)**
+Once your site is live, open your editor at:
 ```
-https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/
+https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html
 ```
-(Check **Actions** tab for build status.)
+- Click **⚙ GitHub Settings**, enter your username, repo name, and the token from step 3 → Save.
+- Click **⬇ Load from GitHub** to pull in the existing portfolio data.
+- Fill in your **Profile** and add your first investigation.
+- Click **⬆ Publish to GitHub** — your site rebuilds in ~60 seconds.
 
 ---
 
-## Updating your portfolio
+## Adding a new investigation (ongoing)
 
-Re-open `editor.html` → click **↑ Load existing portfolio.json** → make changes → download the new file → repeat step 4.
+Every time you complete an investigation in the SOCSIM lab:
+
+1. Open **`https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html`**
+2. Click **⬇ Load from GitHub** — loads all your existing work
+3. Click **+ Add Alert Investigation** or **+ Add BEC Case Drop**
+4. Fill in the fields — Markdown is supported in all narrative sections (bold, bullets, code blocks, images)
+5. Click **⬆ Publish to GitHub**
+6. Wait ~60 seconds → live
+
+That's it. No JSON editing, no file downloads, no command line.
+
+---
+
+## Adding screenshots to write-ups
+
+1. In your GitHub repo, navigate to `src/assets/` (create the folder if it doesn't exist)
+2. Upload your screenshot file via drag-and-drop → commit
+3. Click the file → click **Raw** → copy the URL
+4. In the editor, paste it into any narrative field as: `![description](url)`
 
 ---
 
