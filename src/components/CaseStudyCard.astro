@@ -1,0 +1,146 @@
+---
+import Timeline from './Timeline.astro';
+import IoCList from './IoCList.astro';
+import VerifiedBadge from './VerifiedBadge.astro';
+
+interface TimelineEntry {
+  time: string;
+  event: string;
+}
+
+interface IoC {
+  type: string;
+  value: string;
+  context: string;
+}
+
+interface CaseStudy {
+  id: string;
+  title: string;
+  summary: string;
+  alert: string;
+  methodology: string;
+  timeline: TimelineEntry[];
+  rootCause: string;
+  containment: string;
+  iocs: IoC[];
+  detections: string[];
+  tools: string[];
+  verified: boolean;
+}
+
+interface Props {
+  caseData: CaseStudy;
+  detailUrl?: string;
+}
+
+const { caseData, detailUrl } = Astro.props;
+
+// Expand known methodology frameworks into labelled steps.
+const KNOWN_FRAMEWORKS: Record<string, string[]> = {
+  PICERL: ['Preparation', 'Identification', 'Containment', 'Eradication', 'Recovery', 'Lessons Learned'],
+  PICERF: ['Preparation', 'Identification', 'Containment', 'Eradication', 'Recovery', 'Follow-up'],
+};
+
+const methodologyKey = caseData.methodology?.toUpperCase().split(':')[0].trim();
+const methodologySteps = KNOWN_FRAMEWORKS[methodologyKey] ?? null;
+---
+<article class="case-card">
+
+  <div class="case-header">
+    <div>
+      <div class="case-id">{caseData.id}</div>
+      <h2 class="case-title">
+        {detailUrl
+          ? <a href={detailUrl} style="color:inherit;text-decoration:none;">{caseData.title}</a>
+          : caseData.title
+        }
+      </h2>
+      <p class="case-summary">{caseData.summary}</p>
+    </div>
+    {caseData.verified && <VerifiedBadge />}
+  </div>
+
+  <!-- Alert Trigger -->
+  <div class="case-section">
+    <div class="case-section-label">Alert Trigger</div>
+    <div class="alert-box">{caseData.alert}</div>
+  </div>
+
+  <!-- Methodology -->
+  <div class="case-section">
+    <div class="case-section-label">Methodology</div>
+    {methodologySteps ? (
+      <div class="methodology-steps">
+        {methodologySteps.map((step, i) => (
+          <>
+            <span class="method-step">{step}</span>
+            {i < methodologySteps.length - 1 && <span class="method-sep">→</span>}
+          </>
+        ))}
+      </div>
+    ) : (
+      <span class="methodology-label">{caseData.methodology}</span>
+    )}
+  </div>
+
+  <!-- Timeline -->
+  {caseData.timeline.length > 0 && (
+    <div class="case-section">
+      <div class="case-section-label">Timeline</div>
+      <Timeline entries={caseData.timeline} />
+    </div>
+  )}
+
+  <!-- Root Cause -->
+  {caseData.rootCause && (
+    <div class="case-section">
+      <div class="case-section-label">Root Cause</div>
+      <div class="case-section-content">{caseData.rootCause}</div>
+    </div>
+  )}
+
+  <!-- Containment -->
+  {caseData.containment && (
+    <div class="case-section">
+      <div class="case-section-label">Containment</div>
+      <div class="case-section-content">{caseData.containment}</div>
+    </div>
+  )}
+
+  <!-- IoCs -->
+  {caseData.iocs.length > 0 && (
+    <div class="case-section">
+      <div class="case-section-label">Indicators of Compromise</div>
+      <IoCList iocs={caseData.iocs} />
+    </div>
+  )}
+
+  <!-- Detections -->
+  {caseData.detections.length > 0 && (
+    <div class="case-section">
+      <div class="case-section-label">Detection Improvements</div>
+      <div>
+        {caseData.detections.map((d) => (
+          <div class="detection-item">
+            <span class="detection-bullet">→</span>
+            <span>{d}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- Tools -->
+  {caseData.tools.length > 0 && (
+    <div class="case-section">
+      <div class="case-section-label">Tools Used</div>
+      <div class="tools-list">
+        {caseData.tools.map((t) => (
+          <span class="tool-tag">{t}</span>
+        ))}
+      </div>
+    </div>
+  )}
+
+</article>

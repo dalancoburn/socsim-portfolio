@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProfileHeader from '../components/ProfileHeader.astro';
+import CaseStudyCard from '../components/CaseStudyCard.astro';
+import portfolio from '../data/portfolio.json';
+
+const base = import.meta.env.BASE_URL;
+const pageTitle = `${portfolio.profile.name} — SOCSIM Portfolio`;
+---
+<BaseLayout title={pageTitle}>
+  <ProfileHeader profile={portfolio.profile} />
+
+  <div class="section-label">Case Studies</div>
+
+  {portfolio.cases.length === 0 ? (
+    <div class="empty-state">No case studies yet.</div>
+  ) : (
+    portfolio.cases.map((c) => (
+      <CaseStudyCard
+        caseData={c}
+        detailUrl={`${base}cases/${c.id}`}
+      />
+    ))
+  )}
+</BaseLayout>

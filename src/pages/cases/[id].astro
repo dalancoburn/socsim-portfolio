@@ -1,0 +1,29 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CaseStudyCard from '../../components/CaseStudyCard.astro';
+import portfolio from '../../data/portfolio.json';
+
+export const getStaticPaths = (() => {
+  return portfolio.cases.map((c) => ({
+    params: { id: c.id },
+    props: { caseData: c },
+  }));
+}) satisfies GetStaticPaths;
+
+const { caseData } = Astro.props;
+const pageTitle = `${caseData.id} — ${portfolio.profile.name} — SOCSIM`;
+const base = import.meta.env.BASE_URL;
+---
+<BaseLayout title={pageTitle}>
+  <div style="margin-bottom: 32px;">
+    <a
+      href={base}
+      style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);text-decoration:none;letter-spacing:0.08em;"
+    >
+      ← {portfolio.profile.name}
+    </a>
+  </div>
+
+  <CaseStudyCard caseData={caseData} />
+</BaseLayout>

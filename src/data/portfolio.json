@@ -1,0 +1,108 @@
+{
+  "profile": {
+    "name": "Marcus Chen",
+    "role": "Security Analyst II",
+    "tagline": "Incident response and threat hunting in cloud-native environments. Focus areas: identity attacks, M365 forensics, and detection engineering.",
+    "location": "Austin, TX",
+    "photo": "",
+    "links": {
+      "linkedin": "https://linkedin.com/in/marcuschen",
+      "github": "https://github.com/marcuschen",
+      "email": "m.chen@example.com"
+    }
+  },
+  "cases": [
+    {
+      "id": "BEC-2024-001",
+      "title": "Business Email Compromise — CFO Account Takeover",
+      "summary": "AiTM phishing kit captured the CFO's session token post-MFA, granting adversary persistent Exchange access. A forwarding rule silently exfiltrated 14 emails before a fraudulent wire transfer of $127K was identified and blocked. Total dwell time: 6 hours. Detection-to-containment: 58 minutes.",
+      "alert": "Microsoft Sentinel — High Severity: \"Impossible Travel: Sign-in from multiple geographic locations within 4-hour window\" triggered at 02:14 UTC for cfo@[org].com. Sentinel fusion appended a co-occurring \"MFA Fatigue: 7 consecutive push-notification denials\" alert from the same session, escalating both indicators into a single P1 incident.",
+      "methodology": "PICERL",
+      "timeline": [
+        {
+          "time": "02:14 UTC",
+          "event": "Sentinel fusion alert fires — Impossible Travel + MFA Fatigue correlated for cfo@[org].com. On-call analyst paged via PagerDuty."
+        },
+        {
+          "time": "02:22 UTC",
+          "event": "Incident opened. IP-first triage: legitimate source 24.118.x.x (Austin, TX) vs. adversary source 185.220.101.47 (Bucharest, RO). AbuseIPDB returns 97% confidence malicious — confirmed active Tor exit relay."
+        },
+        {
+          "time": "02:35 UTC",
+          "event": "VirusTotal and Shodan corroborate malicious classification. Entra sign-in logs show refresh token issued to adversary IP 6 hours prior (20:14 UTC) — pre-alert dwell confirmed."
+        },
+        {
+          "time": "02:41 UTC",
+          "event": "Session ID pivot via Microsoft Graph API (auditLogs/signIns). Active refresh token confirmed still valid — adversary maintaining Exchange access without account password. Phishing domain credential-secure-login[.]com extracted from sign-in referrer field."
+        },
+        {
+          "time": "02:58 UTC",
+          "event": "Exchange Online audit log surfaces inbox rule created at 20:31 UTC prior day: all mail matching wire, transfer, payment, or invoice forwarded to ext_forward_bec2024@proton.me and marked as read. Financial intercept confirmed."
+        },
+        {
+          "time": "03:12 UTC",
+          "event": "Containment initiated: all active sessions revoked via Graph API (revokeSignInSessions). Conditional Access updated to require compliant device. MFA registration locked pending re-enrollment."
+        },
+        {
+          "time": "03:24 UTC",
+          "event": "Malicious inbox rule removed. Full-content Exchange audit enabled. Exfiltration search confirms 14 emails forwarded over the 6-hour dwell window; subject lines reviewed for financial content."
+        },
+        {
+          "time": "04:01 UTC",
+          "event": "Finance team notified. Wire transfer request sent from adversary at 01:47 UTC identified — $127,000 to external routing. Transfer still pending at receiving bank."
+        },
+        {
+          "time": "04:45 UTC",
+          "event": "Bank fraud line contacted. Transfer flagged and blocked before settlement window closed. No financial loss incurred."
+        },
+        {
+          "time": "06:00 UTC",
+          "event": "Post-incident timeline finalized. Detection gap documented: no existing rule for inbox rule creation on executive accounts. Lessons-learned session scheduled."
+        }
+      ],
+      "rootCause": "An AiTM (Adversary-in-the-Middle) phishing kit hosted at credential-secure-login[.]com operated as a reverse proxy to the legitimate Microsoft sign-in portal. After the CFO completed MFA, the kit captured the post-authentication session cookie and replayed it from a Tor exit node. Conditional Access did not re-evaluate device compliance on IP change. Legacy Continuous Access Evaluation (CAE) enforcement was absent from executive accounts, allowing the stolen token a 6-hour unrestricted access window.",
+      "containment": "All active sessions revoked via Microsoft Graph API (revokeSignInSessions), immediately invalidating the stolen refresh token. Conditional Access updated to enforce CAE strict-location mode for all C-suite accounts. Phishing domain submitted to Microsoft DART for tenant-level block. Malicious inbox rule removed; full-content mailbox audit enabled across C-suite. Finance team's wire approval process updated: all outbound transfers exceeding $10K require out-of-band phone verification with the requester before processing.",
+      "iocs": [
+        {
+          "type": "IP",
+          "value": "185.220.101.47",
+          "context": "Adversary egress — Tor exit node, AbuseIPDB confidence 97%"
+        },
+        {
+          "type": "Domain",
+          "value": "credential-secure-login[.]com",
+          "context": "AiTM phishing kit — reverse proxy to Microsoft O365 sign-in"
+        },
+        {
+          "type": "Email",
+          "value": "ext_forward_bec2024@proton[.]me",
+          "context": "Exfiltration mailbox — destination of malicious inbox forwarding rule"
+        },
+        {
+          "type": "Token",
+          "value": "eyJ0eXAiOiJKV1QiLCJub25jZSI6Ii…[truncated]",
+          "context": "Stolen session refresh token — revoked 03:12 UTC"
+        }
+      ],
+      "detections": [
+        "KQL analytic rule: Alert on inbox rule creation targeting an external domain within 60 minutes of an Impossible Travel event for the same UPN. Severity: High. Auto-opens P1 incident.",
+        "KQL analytic rule: Correlate sign-in events where session token age exceeds 4 hours and the source country differs from token-issuance country. Alert enriched with UEBA risk score via Sentinel fusion.",
+        "Logic App playbook: On confirmed AiTM indicator (phishing domain in sign-in referrer OR Tor exit node IP), auto-invoke revokeSignInSessions and page on-call analyst — zero manual steps for initial containment.",
+        "Continuous Access Evaluation (CAE) enforced in strict-location mode for all Executive security group accounts. Token lifetime reduced from 60 minutes to 10 minutes with IP-binding enabled."
+      ],
+      "tools": [
+        "Microsoft Sentinel",
+        "KQL",
+        "Microsoft Graph API",
+        "Graph Explorer",
+        "Exchange Online Admin",
+        "AbuseIPDB",
+        "VirusTotal",
+        "Shodan",
+        "MxToolbox",
+        "Logic Apps"
+      ],
+      "verified": true
+    }
+  ]
+}

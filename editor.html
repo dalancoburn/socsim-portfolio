@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOCSIM Portfolio Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #141414;
+      --surface-2: #1a1a1a;
+      --surface-3: #1f1f1f;
+      --border: rgba(255,255,255,0.1);
+      --border-focus: rgba(240,122,34,0.5);
+      --accent: #f07a22;
+      --text: #e8e8e8;
+      --text-dim: #888;
+      --text-dimmer: #555;
+      --danger: #ef4444;
+      --green: #22c55e;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 48px 48px;
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── EDITOR HEADER ─── */
+    .editor-header {
+      background: rgba(13,13,13,0.95);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .editor-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .editor-logo {
+      font-family: 'Big Shoulders Display', sans-serif;
+      font-weight: 900;
+      font-size: 1.15rem;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+    }
+    .editor-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-dimmer);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* ── BUTTONS ─── */
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { border-color: var(--text-dim); color: var(--text); }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      font-weight: 600;
+    }
+    .btn-primary:hover { background: #d96d1a; border-color: #d96d1a; color: #000; }
+    .btn-danger {
+      border-color: rgba(239,68,68,0.3);
+      color: var(--danger);
+      background: rgba(239,68,68,0.05);
+      padding: 4px 10px;
+      font-size: 0.6rem;
+    }
+    .btn-danger:hover { border-color: var(--danger); background: rgba(239,68,68,0.1); }
+    .btn-add {
+      border-style: dashed;
+      color: var(--accent);
+      border-color: rgba(240,122,34,0.3);
+      background: rgba(240,122,34,0.04);
+      font-size: 0.65rem;
+    }
+    .btn-add:hover { border-color: var(--accent); background: rgba(240,122,34,0.08); }
+
+    /* ── LAYOUT ─── */
+    .editor-body { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* ── FORM SECTIONS ─── */
+    .form-section {
+      margin-bottom: 40px;
+    }
+    .form-section-title {
+      font-family: 'Big Shoulders Display', sans-serif;
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .form-section-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--text-dimmer);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .form-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 28px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-row.full { grid-template-columns: 1fr; }
+    .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text-dimmer);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .form-input, .form-textarea, .form-select {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      padding: 9px 12px;
+      transition: border-color 0.15s;
+      outline: none;
+      width: 100%;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--border-focus);
+    }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--text-dimmer); }
+    .form-textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+    .form-select { cursor: pointer; }
+    .form-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      color: var(--text-dimmer);
+      letter-spacing: 0.04em;
+    }
+    .form-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+    .form-sub-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    /* ── CASE BLOCKS ─── */
+    .cases-container { display: flex; flex-direction: column; gap: 24px; }
+    .case-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .case-block-header {
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .case-block-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .case-block-body { padding: 24px; }
+    .case-block-subsection { margin-bottom: 24px; }
+    .case-block-subsection:last-child { margin-bottom: 0; }
+
+    /* ── REPEATER ROWS ─── */
+    .repeater-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+    .repeater-row {
+      display: grid;
+      align-items: start;
+      gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .repeater-row.timeline-row { grid-template-columns: 130px 1fr auto; }
+    .repeater-row.ioc-row { grid-template-columns: 100px 1fr 1fr auto; }
+    .repeater-row.detection-row { grid-template-columns: 1fr auto; }
+    .repeater-cell { display: flex; flex-direction: column; gap: 4px; }
+    .repeater-cell-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      color: var(--text-dimmer);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .row-remove-btn {
+      align-self: flex-end;
+      padding-bottom: 2px;
+    }
+
+    /* ── VERIFIED TOGGLE ─── */
+    .verified-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface-2);
+      cursor: pointer;
+    }
+    .verified-row input[type="checkbox"] { accent-color: var(--green); width: 15px; height: 15px; cursor: pointer; }
+    .verified-label {
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+    .verified-label strong { color: var(--green); }
+
+    /* ── LOAD/GENERATE BAR ─── */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 40px;
+      border-top: 1px solid var(--border);
+      background: rgba(13,13,13,0.95);
+      position: sticky;
+      bottom: 0;
+    }
+    .action-bar-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--text-dimmer);
+      letter-spacing: 0.06em;
+    }
+    #file-input { display: none; }
+
+    @media (max-width: 640px) {
+      .editor-header { padding: 14px 16px; }
+      .editor-body { padding: 24px 16px 80px; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-row.three { grid-template-columns: 1fr; }
+      .repeater-row.ioc-row { grid-template-columns: 1fr; }
+      .repeater-row.timeline-row { grid-template-columns: 1fr; }
+      .action-bar { padding: 14px 16px; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────── -->
+<header class="editor-header">
+  <div class="editor-brand">
+    <span class="editor-logo">SOCSIM</span>
+    <span class="editor-title">Portfolio Editor</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn" onclick="document.getElementById('file-input').click()">
+      ↑ Load existing portfolio.json
+    </button>
+    <input type="file" id="file-input" accept=".json" onchange="loadJSON(this)" />
+    <button class="btn btn-primary" onclick="generateJSON()">
+      ⬇ Download portfolio.json
+    </button>
+  </div>
+</header>
+
+<!-- ── BODY ───────────────────────────────────────────── -->
+<div class="editor-body">
+
+  <!-- PROFILE -->
+  <div class="form-section">
+    <div class="form-section-title">Profile</div>
+    <div class="form-section-sub">Your identity — shown in the portfolio header</div>
+    <div class="form-panel">
+
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label" for="p-name">Full Name</label>
+          <input id="p-name" type="text" class="form-input" placeholder="e.g. Marcus Chen" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="p-role">Role / Title</label>
+          <input id="p-role" type="text" class="form-input" placeholder="e.g. Security Analyst II · Blue Team" />
+        </div>
+      </div>
+
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label" for="p-tagline">Tagline</label>
+          <input id="p-tagline" type="text" class="form-input" placeholder="One-sentence description of your focus areas" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label" for="p-location">Location</label>
+          <input id="p-location" type="text" class="form-input" placeholder="e.g. Austin, TX" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="p-photo">Photo URL <span class="form-hint">(optional — paste a direct image link)</span></label>
+          <input id="p-photo" type="url" class="form-input" placeholder="https://…/photo.jpg" />
+        </div>
+      </div>
+
+      <div class="form-divider"></div>
+      <div class="form-sub-label">Links</div>
+
+      <div class="form-row three">
+        <div class="form-field">
+          <label class="form-label" for="p-linkedin">LinkedIn URL</label>
+          <input id="p-linkedin" type="url" class="form-input" placeholder="https://linkedin.com/in/…" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="p-github">GitHub URL</label>
+          <input id="p-github" type="url" class="form-input" placeholder="https://github.com/…" />
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="p-email">Email Address</label>
+          <input id="p-email" type="email" class="form-input" placeholder="you@example.com" />
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CASE STUDIES -->
+  <div class="form-section">
+    <div class="form-section-title">Case Studies</div>
+    <div class="form-section-sub">Each case maps to one incident or lab exercise</div>
+
+    <div class="cases-container" id="cases-container"></div>
+
+    <button class="btn btn-add" style="margin-top:16px;width:100%;justify-content:center;" onclick="addCase()">
+      + Add Case Study
+    </button>
+  </div>
+
+</div>
+
+<!-- ── STICKY ACTION BAR ───────────────────────────────── -->
+<div class="action-bar">
+  <div class="action-bar-hint">Fill the form → download → upload to /src/data/ on GitHub → wait ~60 s → live.</div>
+  <button class="btn btn-primary" onclick="generateJSON()">⬇ Download portfolio.json</button>
+</div>
+
+<script>
+  /* ── HELPERS ──────────────────────────────────────────── */
+  function esc(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function val(el) { return (el?.value ?? '').trim(); }
+
+  let caseCounter = 0;
+
+  /* ── CASE BLOCK TEMPLATE ─────────────────────────────── */
+  function caseBlockHTML(uid, num) {
+    return `
+    <div class="case-block" data-uid="${uid}">
+      <div class="case-block-header">
+        <span class="case-block-num">Case Study #${num}</span>
+        <button class="btn btn-danger" onclick="removeCase('${uid}')">Remove</button>
+      </div>
+      <div class="case-block-body">
+
+        <div class="case-block-subsection">
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Case ID <span class="form-hint">(e.g. BEC-2024-001)</span></label>
+              <input type="text" class="form-input" data-field="id" placeholder="BEC-2025-001" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Title</label>
+              <input type="text" class="form-input" data-field="title" placeholder="Descriptive incident title" />
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-field">
+              <label class="form-label">Summary <span class="form-hint">(2–3 sentences, key metrics)</span></label>
+              <textarea class="form-textarea" data-field="summary" rows="3" placeholder="What happened, how it was found, outcome."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Alert Trigger</div>
+          <textarea class="form-textarea" data-field="alert" rows="4" placeholder="Describe the alert that opened the incident — tool name, rule name, timestamp, key indicators."></textarea>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Methodology</div>
+          <input type="text" class="form-input" data-field="methodology" list="methodology-list" placeholder="e.g. PICERL" style="max-width:320px;" />
+          <datalist id="methodology-list">
+            <option value="PICERL">
+            <option value="PICERF">
+            <option value="MITRE ATT&amp;CK">
+            <option value="NIST CSF">
+            <option value="SANS">
+            <option value="Diamond Model">
+          </datalist>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Timeline</div>
+          <div class="repeater-rows" data-repeater="timeline"></div>
+          <button class="btn btn-add" onclick="addTimelineRow(this)">+ Add Entry</button>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Root Cause</div>
+          <textarea class="form-textarea" data-field="rootCause" rows="4" placeholder="Technical explanation of how the incident originated."></textarea>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Containment</div>
+          <textarea class="form-textarea" data-field="containment" rows="4" placeholder="Actions taken to stop and remediate the incident."></textarea>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Indicators of Compromise</div>
+          <div class="repeater-rows" data-repeater="iocs"></div>
+          <button class="btn btn-add" onclick="addIoCRow(this)">+ Add IoC</button>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Detection Improvements</div>
+          <div class="repeater-rows" data-repeater="detections"></div>
+          <button class="btn btn-add" onclick="addDetectionRow(this)">+ Add Detection</button>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <div class="form-sub-label">Tools Used <span class="form-hint">(one per line)</span></div>
+          <textarea class="form-textarea" data-field="tools" rows="4" placeholder="Microsoft Sentinel&#10;KQL&#10;AbuseIPDB&#10;VirusTotal"></textarea>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="case-block-subsection">
+          <label class="verified-row">
+            <input type="checkbox" data-field="verified" />
+            <span class="verified-label">
+              <strong>SOCSIM Verified</strong> — mark this case as completed in a live SOCSIM lab
+            </span>
+          </label>
+        </div>
+
+      </div>
+    </div>`;
+  }
+
+  /* ── TIMELINE ROW ────────────────────────────────────── */
+  function timelineRowHTML(time, event) {
+    return `
+    <div class="repeater-row timeline-row">
+      <div class="repeater-cell">
+        <span class="repeater-cell-label">Time</span>
+        <input type="text" class="form-input" data-sub="time" value="${esc(time)}" placeholder="02:14 UTC" />
+      </div>
+      <div class="repeater-cell">
+        <span class="repeater-cell-label">Event</span>
+        <input type="text" class="form-input" data-sub="event" value="${esc(event)}" placeholder="What happened at this timestamp" />
+      </div>
+      <div class="row-remove-btn">
+        <button class="btn btn-danger" onclick="this.closest('.repeater-row').remove()">×</button>
+      </div>
+    </div>`;
+  }
+
+  /* ── IOC ROW ─────────────────────────────────────────── */
+  function iocRowHTML(type, value, context) {
+    const types = ['IP', 'Domain', 'Email', 'URL', 'Hash', 'Token', 'File', 'Registry', 'Other'];
+    const opts = types.map(t => `<option value="${t}"${t === type ? ' selected' : ''}>${t}</option>`).join('');
+    return `
+    <div class="repeater-row ioc-row">
+      <div class="repeater-cell">
+        <span class="repeater-cell-label">Type</span>
+        <select class="form-select" data-sub="type">${opts}</select>
+      </div>
+      <div class="repeater-cell">
+        <span class="repeater-cell-label">Value</span>
+        <input type="text" class="form-input" data-sub="value" value="${esc(value)}" placeholder="185.220.101.47" />
+      </div>
+      <div class="repeater-cell">
+        <span class="repeater-cell-label">Context</span>
+        <input type="text" class="form-input" data-sub="context" value="${esc(context)}" placeholder="Why this is significant" />
+      </div>
+      <div class="row-remove-btn">
+        <button class="btn btn-danger" onclick="this.closest('.repeater-row').remove()">×</button>
+      </div>
+    </div>`;
+  }
+
+  /* ── DETECTION ROW ───────────────────────────────────── */
+  function detectionRowHTML(text) {
+    return `
+    <div class="repeater-row detection-row">
+      <div class="repeater-cell">
+        <textarea class="form-textarea" data-sub="detection" rows="2" placeholder="Describe a new detection rule, playbook, or control improvement.">${esc(text)}</textarea>
+      </div>
+      <div class="row-remove-btn">
+        <button class="btn btn-danger" onclick="this.closest('.repeater-row').remove()">×</button>
+      </div>
+    </div>`;
+  }
+
+  /* ── ADD HELPERS ─────────────────────────────────────── */
+  function addCase(data) {
+    caseCounter++;
+    const uid = 'case-' + Date.now() + '-' + caseCounter;
+    const num = caseCounter;
+    const container = document.getElementById('cases-container');
+    const div = document.createElement('div');
+    div.innerHTML = caseBlockHTML(uid, num);
+    const block = div.firstElementChild;
+    container.appendChild(block);
+
+    if (data) populateCaseBlock(block, data);
+  }
+
+  function removeCase(uid) {
+    document.querySelector(`.case-block[data-uid="${uid}"]`)?.remove();
+  }
+
+  function addTimelineRow(btn, time, event) {
+    const container = btn.previousElementSibling;
+    const div = document.createElement('div');
+    div.innerHTML = timelineRowHTML(time ?? '', event ?? '');
+    container.appendChild(div.firstElementChild);
+  }
+
+  function addIoCRow(btn, type, value, context) {
+    const container = btn.previousElementSibling;
+    const div = document.createElement('div');
+    div.innerHTML = iocRowHTML(type ?? 'IP', value ?? '', context ?? '');
+    container.appendChild(div.firstElementChild);
+  }
+
+  function addDetectionRow(btn, text) {
+    const container = btn.previousElementSibling;
+    const div = document.createElement('div');
+    div.innerHTML = detectionRowHTML(text ?? '');
+    container.appendChild(div.firstElementChild);
+  }
+
+  /* ── POPULATE CASE BLOCK FROM DATA ──────────────────── */
+  function populateCaseBlock(block, data) {
+    const f = (field) => block.querySelector(`[data-field="${field}"]`);
+
+    if (f('id')) f('id').value = data.id ?? '';
+    if (f('title')) f('title').value = data.title ?? '';
+    if (f('summary')) f('summary').value = data.summary ?? '';
+    if (f('alert')) f('alert').value = data.alert ?? '';
+    if (f('methodology')) f('methodology').value = data.methodology ?? '';
+    if (f('rootCause')) f('rootCause').value = data.rootCause ?? '';
+    if (f('containment')) f('containment').value = data.containment ?? '';
+    if (f('tools')) f('tools').value = (data.tools ?? []).join('\n');
+    if (f('verified')) f('verified').checked = data.verified ?? false;
+
+    const tlBtn = block.querySelector('[data-repeater="timeline"] + button');
+    (data.timeline ?? []).forEach(entry => addTimelineRow(tlBtn, entry.time, entry.event));
+
+    const iocBtn = block.querySelector('[data-repeater="iocs"] + button');
+    (data.iocs ?? []).forEach(ioc => addIoCRow(iocBtn, ioc.type, ioc.value, ioc.context));
+
+    const detBtn = block.querySelector('[data-repeater="detections"] + button');
+    (data.detections ?? []).forEach(d => addDetectionRow(detBtn, d));
+  }
+
+  /* ── GENERATE JSON ───────────────────────────────────── */
+  function generateJSON() {
+    const data = {
+      profile: {
+        name: val(document.getElementById('p-name')),
+        role: val(document.getElementById('p-role')),
+        tagline: val(document.getElementById('p-tagline')),
+        location: val(document.getElementById('p-location')),
+        photo: val(document.getElementById('p-photo')),
+        links: {
+          linkedin: val(document.getElementById('p-linkedin')),
+          github: val(document.getElementById('p-github')),
+          email: val(document.getElementById('p-email')),
+        },
+      },
+      cases: [],
+    };
+
+    document.querySelectorAll('.case-block').forEach(block => {
+      const f = (field) => block.querySelector(`[data-field="${field}"]`);
+
+      const toolsRaw = val(f('tools'));
+      const tools = toolsRaw
+        ? toolsRaw.split('\n').map(s => s.trim()).filter(Boolean)
+        : [];
+
+      const timeline = [];
+      block.querySelectorAll('[data-repeater="timeline"] .repeater-row').forEach(row => {
+        const time = val(row.querySelector('[data-sub="time"]'));
+        const event = val(row.querySelector('[data-sub="event"]'));
+        if (time || event) timeline.push({ time, event });
+      });
+
+      const iocs = [];
+      block.querySelectorAll('[data-repeater="iocs"] .repeater-row').forEach(row => {
+        const type = val(row.querySelector('[data-sub="type"]'));
+        const value = val(row.querySelector('[data-sub="value"]'));
+        const context = val(row.querySelector('[data-sub="context"]'));
+        if (value) iocs.push({ type, value, context });
+      });
+
+      const detections = [];
+      block.querySelectorAll('[data-repeater="detections"] .repeater-row').forEach(row => {
+        const text = val(row.querySelector('[data-sub="detection"]'));
+        if (text) detections.push(text);
+      });
+
+      data.cases.push({
+        id: val(f('id')),
+        title: val(f('title')),
+        summary: val(f('summary')),
+        alert: val(f('alert')),
+        methodology: val(f('methodology')),
+        timeline,
+        rootCause: val(f('rootCause')),
+        containment: val(f('containment')),
+        iocs,
+        detections,
+        tools,
+        verified: f('verified')?.checked ?? false,
+      });
+    });
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'portfolio.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /* ── LOAD JSON ───────────────────────────────────────── */
+  function loadJSON(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        populateForm(data);
+      } catch {
+        alert('Could not parse the file. Make sure it is a valid portfolio.json.');
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  }
+
+  function populateForm(data) {
+    const p = data.profile ?? {};
+    document.getElementById('p-name').value = p.name ?? '';
+    document.getElementById('p-role').value = p.role ?? '';
+    document.getElementById('p-tagline').value = p.tagline ?? '';
+    document.getElementById('p-location').value = p.location ?? '';
+    document.getElementById('p-photo').value = p.photo ?? '';
+    document.getElementById('p-linkedin').value = p.links?.linkedin ?? '';
+    document.getElementById('p-github').value = p.links?.github ?? '';
+    document.getElementById('p-email').value = p.links?.email ?? '';
+
+    const container = document.getElementById('cases-container');
+    container.innerHTML = '';
+    caseCounter = 0;
+
+    (data.cases ?? []).forEach(c => addCase(c));
+  }
+
+  /* ── INIT ────────────────────────────────────────────── */
+  addCase();
+</script>
+</body>
+</html>

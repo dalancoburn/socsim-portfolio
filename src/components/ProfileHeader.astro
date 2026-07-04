@@ -1,0 +1,56 @@
+---
+interface Links {
+  linkedin?: string;
+  github?: string;
+  email?: string;
+}
+
+interface Profile {
+  name: string;
+  role: string;
+  tagline: string;
+  location: string;
+  photo: string;
+  links: Links;
+}
+
+interface Props {
+  profile: Profile;
+}
+
+const { profile } = Astro.props;
+
+const initials = profile.name
+  .split(' ')
+  .map((n) => n[0])
+  .slice(0, 2)
+  .join('');
+---
+<header class="profile-header">
+  <div class="profile-avatar">
+    {profile.photo
+      ? <img src={profile.photo} alt={profile.name} />
+      : initials
+    }
+  </div>
+
+  <div class="profile-meta">
+    <div class="profile-name">{profile.name}</div>
+    <div class="profile-role">{profile.role}</div>
+    <p class="profile-tagline">{profile.tagline}</p>
+    {profile.location && (
+      <div class="profile-location">&#9632; {profile.location}</div>
+    )}
+    <nav class="profile-links">
+      {profile.links.linkedin && (
+        <a href={profile.links.linkedin} class="profile-link" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      )}
+      {profile.links.github && (
+        <a href={profile.links.github} class="profile-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+      )}
+      {profile.links.email && (
+        <a href={`mailto:${profile.links.email}`} class="profile-link">Email</a>
+      )}
+    </nav>
+  </div>
+</header>
