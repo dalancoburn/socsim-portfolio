@@ -103,11 +103,11 @@ const THEMES: Record<string, Record<string, string>> = {
 
 const themeName = ((portfolio.profile as Record<string,string>).theme ?? 'operator');
 const themeVars = THEMES[themeName] ?? THEMES.operator;
-const cssVars = Object.entries(themeVars).map(([k, v]) => `  ${k}: ${v};`).join('\n');
-const themeCSS = `:root {\n${cssVars}\n}`;
+// Inline style on <html> beats any linked stylesheet regardless of source order
+const inlineStyle = Object.entries(themeVars).map(([k, v]) => `${k}:${v}`).join(';');
 ---
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style={inlineStyle}>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -118,8 +118,6 @@ const themeCSS = `:root {\n${cssVars}\n}`;
     href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
     rel="stylesheet"
   />
-  <!-- Theme override — comes after global.css bundle so it wins -->
-  <Fragment set:html={`<style>${themeCSS}</style>`} />
 </head>
 <body>
   <nav class="site-nav">
