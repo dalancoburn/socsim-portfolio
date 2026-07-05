@@ -1290,13 +1290,17 @@ function restoreDraft() {
 
 /* ═══════════════════════════════════════════════════
    INIT
-   Auto-loads from GitHub if credentials are configured
-   so members always start from their live portfolio state,
-   not a blank form. Falls back to localStorage draft
-   if credentials aren't set or the fetch fails.
+   loadGHSettings and autosave run immediately.
+   The portfolio load is deferred to the 'load' event
+   so EasyMDE (loaded from CDN at the bottom of the
+   page) is guaranteed to be defined before any call
+   to new EasyMDE() inside addAlert / addBEC.
 ═══════════════════════════════════════════════════ */
 loadGHSettings();
-(async function init() {
+setInterval(autosave, 30000);
+window.addEventListener('beforeunload', autosave);
+
+window.addEventListener('load', async function () {
   const hasCredentials = !!(
     localStorage.getItem('gh_owner')?.trim() &&
     localStorage.getItem('gh_repo')?.trim() &&
@@ -1307,9 +1311,7 @@ loadGHSettings();
   } else {
     restoreDraft();
   }
-  setInterval(autosave, 30000);
-  window.addEventListener('beforeunload', autosave);
-})();
+});
 </script>
 
 <!-- ── SCREENSHOT HELPER MODAL ─────────────────── -->
