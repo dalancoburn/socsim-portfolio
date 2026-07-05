@@ -327,6 +327,7 @@
 
       <div class="form-divider"></div>
       <div class="sub-label">Portfolio Theme</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--dimmer);margin-bottom:12px;letter-spacing:.03em;">Applied to your live portfolio — not previewed here in the editor.</div>
       <input type="hidden" id="p-theme" value="operator" />
       <div class="theme-grid" id="theme-grid">
 
@@ -1100,17 +1101,17 @@ async function updateFromTemplate() {
    Fetches the current portfolio.json straight from the repo
    so members don't need to download/re-upload anything.
 ═══════════════════════════════════════════════════ */
-async function loadFromGitHub() {
+async function loadFromGitHub(silent = false) {
   const owner = localStorage.getItem('gh_owner')?.trim();
   const repo  = localStorage.getItem('gh_repo')?.trim();
   const token = localStorage.getItem('gh_token')?.trim();
 
   if (!owner || !repo || !token) {
-    showNotif('Set up your GitHub settings first (click ⚙ above).', 'error', 6000);
+    if (!silent) showNotif('Set up your GitHub settings first (click ⚙ above).', 'error', 6000);
     return;
   }
 
-  showNotif('Loading from GitHub…', 'success', 30000);
+  if (!silent) showNotif('Loading from GitHub…', 'success', 30000);
 
   try {
     const res = await fetch(
@@ -1120,7 +1121,8 @@ async function loadFromGitHub() {
 
     if (!res.ok) {
       const err = await res.json();
-      showNotif(`✗ ${err.message ?? 'Could not fetch portfolio.json'}`, 'error', 6000);
+      if (!silent) showNotif(`✗ ${err.message ?? 'Could not fetch portfolio.json'}`, 'error', 6000);
+      else restoreDraft();
       return;
     }
 
@@ -1129,9 +1131,14 @@ async function loadFromGitHub() {
     const json = decodeURIComponent(escape(atob(file.content.replace(/\n/g, ''))));
     const data = JSON.parse(json);
     populateForm(data);
-    showNotif('✓ Loaded your current portfolio from GitHub.', 'success', 4000);
+    showNotif(
+      silent ? '✓ Loaded from GitHub.' : '✓ Loaded your current portfolio from GitHub.',
+      'success',
+      silent ? 2000 : 4000
+    );
   } catch (e) {
-    showNotif(`✗ ${e.message}`, 'error', 6000);
+    if (!silent) showNotif(`✗ ${e.message}`, 'error', 6000);
+    else restoreDraft();
   }
 }
 
@@ -1148,21 +1155,61 @@ async function publishToGitHub() {
     return;
   }
 
-  const jsonStr = JSON.stringify(collectData(), null, 2);
-  // UTF-8 safe base64
-  const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+  // Validate: every case must have a Case ID (empty ID crashes the Astro build)
+  const data = collectData();
+  const missingId = [...data.alerts, ...data.bec].filter(c => !c.id);
+  if (missingId.length > 0) {
+    showNotif(
+      `✗ ${missingId.length} case(s) are missing a Case ID — fill in the Case ID field on every card before publishing.`,
+      'error', 8000
+    );
+    return;
+  }
+
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/src/data/portfolio.json`;
   const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
 
-  showNotif('Publishing…', 'success', 60000);
+  showNotif('Checking current portfolio…', 'success', 60000);
 
-  // Get current SHA (needed for update)
-  let sha;
+  // Fetch current file: SHA is required for the PUT update; content lets us do a safety check
+  let sha, currentData;
   try {
     const res = await fetch(url, { headers });
-    if (res.ok) sha = (await res.json()).sha;
+    if (res.ok) {
+      const file = await res.json();
+      sha = file.sha;
+      try {
+        const json = decodeURIComponent(escape(atob(file.content.replace(/\n/g, ''))));
+        currentData = JSON.parse(json);
+      } catch {}
+    }
   } catch {}
 
+  // Safety check: never silently publish fewer cases than GitHub already has
+  const ghAlerts = currentData?.alerts?.length ?? 0;
+  const ghBec    = currentData?.bec?.length    ?? 0;
+  if (data.alerts.length < ghAlerts || data.bec.length < ghBec) {
+    const ok = confirm(
+      `⚠ OVERWRITE WARNING\n\n` +
+      `Your portfolio on GitHub currently has:\n` +
+      `  • ${ghAlerts} Alert Investigation(s)\n` +
+      `  • ${ghBec} BEC Case Drop(s)\n\n` +
+      `You are about to publish:\n` +
+      `  • ${data.alerts.length} Alert Investigation(s)\n` +
+      `  • ${data.bec.length} BEC Case Drop(s)\n\n` +
+      `Publishing now will permanently remove cases from your live portfolio.\n\n` +
+      `Press Cancel and use "⬇ Load from GitHub" to restore all your cases first.`
+    );
+    if (!ok) {
+      showNotif('Publish cancelled — use ⬇ Load from GitHub to restore your cases first.', 'error', 7000);
+      return;
+    }
+  }
+
+  showNotif('Publishing…', 'success', 60000);
+
+  // UTF-8 safe base64
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
   const body = { message: 'Update portfolio via SOCSIM editor', content: encoded };
   if (sha) body.sha = sha;
 
@@ -1243,10 +1290,26 @@ function restoreDraft() {
 
 /* ═══════════════════════════════════════════════════
    INIT
+   Auto-loads from GitHub if credentials are configured
+   so members always start from their live portfolio state,
+   not a blank form. Falls back to localStorage draft
+   if credentials aren't set or the fetch fails.
 ═══════════════════════════════════════════════════ */
 loadGHSettings();
-restoreDraft();
-setInterval(autosave, 60000);
+(async function init() {
+  const hasCredentials = !!(
+    localStorage.getItem('gh_owner')?.trim() &&
+    localStorage.getItem('gh_repo')?.trim() &&
+    localStorage.getItem('gh_token')?.trim()
+  );
+  if (hasCredentials) {
+    await loadFromGitHub(true);
+  } else {
+    restoreDraft();
+  }
+  setInterval(autosave, 30000);
+  window.addEventListener('beforeunload', autosave);
+})();
 </script>
 
 <!-- ── SCREENSHOT HELPER MODAL ─────────────────── -->

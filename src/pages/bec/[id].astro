@@ -5,10 +5,12 @@ import BECCard from '../../components/BECCard.astro';
 import portfolio from '../../data/portfolio.json';
 
 export const getStaticPaths = (() => {
-  return portfolio.bec.map((b) => ({
-    params: { id: b.id },
-    props: { bec: b },
-  }));
+  return portfolio.bec
+    .filter((b) => b.id)
+    .map((b) => ({
+      params: { id: b.id },
+      props: { bec: b },
+    }));
 }) satisfies GetStaticPaths;
 
 const { bec } = Astro.props;

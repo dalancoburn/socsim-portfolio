@@ -5,10 +5,12 @@ import AlertCard from '../../components/AlertCard.astro';
 import portfolio from '../../data/portfolio.json';
 
 export const getStaticPaths = (() => {
-  return portfolio.alerts.map((a) => ({
-    params: { id: a.id },
-    props: { alert: a },
-  }));
+  return portfolio.alerts
+    .filter((a) => a.id)
+    .map((a) => ({
+      params: { id: a.id },
+      props: { alert: a },
+    }));
 }) satisfies GetStaticPaths;
 
 const { alert } = Astro.props;
