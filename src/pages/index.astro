@@ -8,7 +8,12 @@ import portfolio from '../data/portfolio.json';
 
 // Strip any trailing slash so we can always write `${base}/path` safely.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const pageTitle = `${portfolio.profile.name} — SOCSIM Portfolio`;
+
+// Show the getting-started screen when the profile name is still a placeholder.
+const isTemplate = !portfolio.profile.name || portfolio.profile.name.startsWith('[');
+const pageTitle = isTemplate
+  ? 'SOCSIM Member Portfolio'
+  : `${portfolio.profile.name} — SOCSIM Portfolio`;
 
 // Use ?? [] throughout so members who haven't updated their portfolio.json
 // yet (after a template upgrade adding new investigation types) get a graceful
@@ -17,8 +22,12 @@ const data = portfolio as Record<string, any>;
 const alerts = (data.alerts ?? []) as typeof portfolio.alerts;
 const bec    = (data.bec    ?? []) as typeof portfolio.bec;
 
-// Show the getting-started screen when the profile name is still a placeholder.
-const isTemplate = !portfolio.profile.name || portfolio.profile.name.startsWith('[');
+// Only link to a detail page when the case has an ID (a blank ID means
+// no detail route was generated). Encode so odd characters can't break the URL.
+const detailUrl = (section: string, id: string | undefined) => {
+  const clean = String(id ?? '').trim();
+  return clean ? `${base}/${section}/${encodeURIComponent(clean)}/` : undefined;
+};
 ---
 <BaseLayout title={pageTitle}>
 
@@ -37,7 +46,8 @@ const isTemplate = !portfolio.profile.name || portfolio.profile.name.startsWith(
         alerts.map((a) => (
           <AlertCard
             alert={a}
-            detailUrl={`${base}/alerts/${a.id}`}
+            compact={true}
+            detailUrl={detailUrl('alerts', a.id)}
           />
         ))
       )}
@@ -51,7 +61,8 @@ const isTemplate = !portfolio.profile.name || portfolio.profile.name.startsWith(
         bec.map((b) => (
           <BECCard
             bec={b}
-            detailUrl={`${base}/bec/${b.id}`}
+            compact={true}
+            detailUrl={detailUrl('bec', b.id)}
           />
         ))
       )}

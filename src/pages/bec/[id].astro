@@ -5,10 +5,18 @@ import BECCard from '../../components/BECCard.astro';
 import portfolio from '../../data/portfolio.json';
 
 export const getStaticPaths = (() => {
-  return portfolio.bec
-    .filter((b) => b.id)
-    .map((b) => ({
-      params: { id: b.id },
+  // Skip blank IDs and dedupe (first occurrence wins) so a member's
+  // copy-pasted duplicate Case ID can never break the whole build.
+  const seen = new Set<string>();
+  return ((portfolio as Record<string, any>).bec ?? [])
+    .filter((b: any) => {
+      const id = String(b.id ?? '').trim();
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+    .map((b: any) => ({
+      params: { id: String(b.id).trim() },
       props: { bec: b },
     }));
 }) satisfies GetStaticPaths;

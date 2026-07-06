@@ -34,10 +34,21 @@ jobs:
             src/pages/ \
             src/styles/ \
             src/utils/ \
-            public/editor.html \
+            public/ \
             astro.config.mjs \
             package.json \
             .github/workflows/deploy.yml
+
+      # The default GITHUB_TOKEN cannot push changes to workflow files
+      # (GitHub rejects the push with "without `workflows` permission").
+      # If deploy.yml changed in the template, revert it here so the rest
+      # of the update still lands, and tell the member what to do.
+      - name: Revert workflow changes the token cannot push
+        run: |
+          if ! git diff --quiet HEAD -- .github/workflows/; then
+            git checkout HEAD -- .github/workflows/
+            echo "::warning::The template's deploy workflow changed, but GitHub does not allow this update to modify workflow files. Everything else was updated. To pick up the new deploy workflow, copy .github/workflows/deploy.yml from https://github.com/dalancoburn/socsim-portfolio manually."
+          fi
 
       - name: Install / update dependencies
         run: npm install

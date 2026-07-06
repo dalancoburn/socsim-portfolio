@@ -10,6 +10,12 @@
   --text: #e8e8e8;
   --text-dim: #888;
   --text-dimmer: #555;
+  --heading: #ffffff;
+  --nav-bg: rgba(0, 0, 0, 0.5);
+  --code-bg: #0a0a0a;
+  --code-text: #c8c8c8;
+  --accent-contrast: #000000;
+  --accent-hover: #d96d1a;
   --green: #22c55e;
   --grid-line: rgba(255, 255, 255, 0.025);
 }
@@ -43,7 +49,7 @@ nav.site-nav {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--nav-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: sticky;
@@ -145,7 +151,7 @@ nav.site-nav {
   font-weight: 700;
   font-size: 3rem;
   line-height: 1;
-  color: #fff;
+  color: var(--heading);
   margin-bottom: 8px;
   letter-spacing: 0.01em;
 }
@@ -249,7 +255,7 @@ nav.site-nav {
   font-family: 'Big Shoulders Display', sans-serif;
   font-weight: 700;
   font-size: 1.75rem;
-  color: #fff;
+  color: var(--heading);
   line-height: 1.1;
   letter-spacing: 0.01em;
 }
@@ -555,14 +561,14 @@ nav.site-nav {
 
 /* ── KQL BLOCK ─────────────────────────────────────────────── */
 .kql-block {
-  background: var(--surface);
+  background: var(--code-bg);
   border: 1px solid var(--border);
   border-left: 3px solid var(--border-accent);
   border-radius: 3px;
   padding: 14px 16px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.74rem;
-  color: #c8c8c8;
+  color: var(--code-text);
   line-height: 1.7;
   overflow-x: auto;
   white-space: pre;
@@ -587,8 +593,8 @@ nav.site-nav {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.62rem;
   color: var(--accent);
-  background: rgba(240,122,34,0.1);
-  border: 1px solid rgba(240,122,34,0.25);
+  background: var(--accent-bg);
+  border: 1px solid var(--border-accent);
   border-radius: 3px;
   width: 24px;
   height: 24px;
@@ -702,7 +708,7 @@ nav.site-nav {
 .md-content ul, .md-content ol { margin: 0.4em 0 0.75em 1.4em; }
 .md-content li { margin-bottom: 0.3em; line-height: 1.65; }
 .md-content li p { margin-bottom: 0.25em; }
-.md-content strong { color: #fff; font-weight: 600; }
+.md-content strong { color: var(--heading); font-weight: 600; }
 .md-content em { color: var(--text-dim); }
 .md-content a { color: var(--accent); text-decoration: none; }
 .md-content a:hover { text-decoration: underline; }
@@ -713,16 +719,16 @@ nav.site-nav {
 .md-content code {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.82em;
-  background: rgba(255,255,255,0.07);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   padding: 1px 5px;
   border-radius: 3px;
   color: var(--accent);
 }
 .md-content pre {
-  background: #0a0a0a;
+  background: var(--code-bg);
   border: 1px solid var(--border);
-  border-left: 3px solid rgba(240,122,34,0.4);
+  border-left: 3px solid var(--border-accent);
   border-radius: 3px;
   padding: 12px 14px;
   overflow-x: auto;
@@ -730,7 +736,7 @@ nav.site-nav {
 }
 .md-content pre code {
   background: none; border: none; padding: 0;
-  color: #c8c8c8; font-size: 0.78rem;
+  color: var(--code-text); font-size: 0.78rem;
 }
 .md-content blockquote {
   border-left: 3px solid var(--border-accent);
@@ -739,7 +745,7 @@ nav.site-nav {
 }
 .md-content h1, .md-content h2, .md-content h3, .md-content h4 {
   font-family: 'Big Shoulders Display', sans-serif;
-  font-weight: 700; color: #fff;
+  font-weight: 700; color: var(--heading);
   margin: 1.2em 0 0.4em; line-height: 1.1;
 }
 .md-content h1 { font-size: 1.4rem; }
@@ -764,6 +770,44 @@ nav.site-nav {
 .md-content hr {
   border: none; border-top: 1px solid var(--border);
   margin: 1em 0;
+}
+
+/* ── LIGHT THEME (ARCTIC) OVERRIDES ────────────────────────── */
+/* Status colours are tuned for dark backgrounds; on the light
+   Arctic theme they fail contrast, so darken them here. */
+[data-theme='arctic'] .severity-critical,
+[data-theme='arctic'] .verdict-malicious,
+[data-theme='arctic'] .cat-tp {
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.07);
+  border-color: rgba(185, 28, 28, 0.35);
+}
+[data-theme='arctic'] .severity-high {
+  color: #c2410c;
+  background: rgba(194, 65, 12, 0.07);
+  border-color: rgba(194, 65, 12, 0.35);
+}
+[data-theme='arctic'] .severity-medium,
+[data-theme='arctic'] .verdict-suspicious,
+[data-theme='arctic'] .cat-btp {
+  color: #a16207;
+  background: rgba(161, 98, 7, 0.07);
+  border-color: rgba(161, 98, 7, 0.35);
+}
+[data-theme='arctic'] .severity-low,
+[data-theme='arctic'] .cat-fp {
+  color: #475569;
+  background: rgba(71, 85, 105, 0.07);
+  border-color: rgba(71, 85, 105, 0.35);
+}
+[data-theme='arctic'] .verdict-nonmalicious {
+  color: #15803d;
+  background: rgba(21, 128, 61, 0.07);
+  border-color: rgba(21, 128, 61, 0.35);
+}
+[data-theme='arctic'] .verified-badge {
+  border-color: rgba(21, 128, 61, 0.35);
+  background: rgba(21, 128, 61, 0.06);
 }
 
 /* ── EMPTY STATE ───────────────────────────────────────────── */

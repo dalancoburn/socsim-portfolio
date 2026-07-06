@@ -233,7 +233,8 @@
   <div class="header-right">
     <button class="btn btn-green btn-sm" onclick="loadFromGitHub()">⬇ Load from GitHub</button>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('file-input').click()" title="Load a portfolio.json file from your computer">↑ Load file</button>
-    <input type="file" id="file-input" accept=".json" onchange="loadJSON(this)" />
+    <button class="btn btn-ghost btn-sm" onclick="downloadJSON()" title="Download a portfolio.json backup of everything currently in the form">↓ Backup</button>
+    <input type="file" id="file-input" accept=".json,application/json" onchange="loadJSON(this)" />
     <button class="btn btn-sm" onclick="updateFromTemplate()" title="Pull the latest components, styles and editor from the SOCSIM template. Your portfolio data is never touched.">↻ Update template</button>
     <button class="btn btn-primary btn-sm" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
   </div>
@@ -263,7 +264,7 @@
         </div>
         <div class="form-field">
           <label class="form-label">Personal Access Token</label>
-          <input type="password" class="form-input" id="gh-token" placeholder="ghp_…" />
+          <input type="password" class="form-input" id="gh-token" placeholder="ghp_…" autocomplete="off" />
         </div>
       </div>
       <div class="gh-instructions">
@@ -416,9 +417,12 @@
 ═══════════════════════════════════════════════════ */
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const val = el => (el?.value??'').trim();
+const arr = v => Array.isArray(v) ? v : []; // tolerate hand-edited JSON
 let alertCount = 0, becCount = 0;
 
 function selectTheme(name) {
+  // Unknown theme name (hand-edited JSON) → fall back to the default
+  if (!document.querySelector(`.theme-swatch[data-theme="${name}"]`)) name = 'operator';
   document.getElementById('p-theme').value = name;
   document.querySelectorAll('.theme-swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.theme === name);
@@ -445,16 +449,34 @@ function toggleGHPanel() {
 }
 
 function saveGHSettings() {
-  const owner = val(document.getElementById('gh-owner'));
-  const repo  = val(document.getElementById('gh-repo'));
-  const token = val(document.getElementById('gh-token'));
+  let owner = val(document.getElementById('gh-owner'));
+  let repo  = val(document.getElementById('gh-repo'));
+  let token = val(document.getElementById('gh-token')).replace(/\s+/g, '');
   if (!owner || !repo || !token) { showNotif('Fill in all three GitHub fields.', 'error'); return; }
+
+  // Forgive common paste mistakes: full URLs, owner/repo combos, @handles, .git suffixes
+  owner = owner.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/^@/, '').split('/').filter(Boolean)[0] ?? '';
+  repo  = repo.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, '');
+  if (repo.includes('/')) repo = repo.split('/').filter(Boolean).pop();
+  if (!owner || !repo) { showNotif('Could not read a username / repo name from what you pasted — enter just the names, e.g. "dalancoburn" and "socsim-portfolio".', 'error', 8000); return; }
+
+  document.getElementById('gh-owner').value = owner;
+  document.getElementById('gh-repo').value  = repo;
   localStorage.setItem('gh_owner', owner);
   localStorage.setItem('gh_repo',  repo);
   localStorage.setItem('gh_token', token);
   updateGHStatus();
   toggleGHPanel();
-  showNotif('GitHub settings saved.');
+
+  // If the form is still empty, pull the member's existing portfolio right
+  // away so they never start typing into a blank editor by mistake.
+  const cur = collectData();
+  if (!cur.profile.name && !cur.alerts.length && !cur.bec.length) {
+    showNotif('GitHub settings saved — loading your portfolio…');
+    loadFromGitHub();
+  } else {
+    showNotif('GitHub settings saved. Click ⬇ Load from GitHub to pull in your published portfolio.', 'success', 6000);
+  }
 }
 
 function loadGHSettings() {
@@ -469,7 +491,7 @@ function loadGHSettings() {
 }
 
 function updateGHStatus() {
-  const connected = !!(localStorage.getItem('gh_owner') && localStorage.getItem('gh_token'));
+  const connected = !!(localStorage.getItem('gh_owner') && localStorage.getItem('gh_repo') && localStorage.getItem('gh_token'));
   document.getElementById('gh-status').style.display = connected ? 'inline-flex' : 'none';
 }
 
@@ -835,22 +857,38 @@ const MDE_TOOLBAR = [
   'preview',
 ];
 
+let mdeWarned = false;
+
 function initMDEs(block, uid, type) {
+  // If the EasyMDE CDN failed to load (offline, blocked network), fall back
+  // to the plain textareas — everything still works, just without the toolbar.
+  if (typeof EasyMDE === 'undefined') {
+    if (!mdeWarned) {
+      mdeWarned = true;
+      showNotif('Formatting toolbar unavailable (couldn’t reach CDN) — plain text editing still works fine.', 'error', 7000);
+    }
+    return;
+  }
   const fields = type === 'alert' ? ALERT_MDE_FIELDS : BEC_MDE_FIELDS;
   fields.forEach(field => {
     const el = block.querySelector(`[data-f="${field}"]`);
     if (!el) return;
     const key = `${uid}:${field}`;
-    mdes[key] = new EasyMDE({
-      element: el,
-      toolbar: MDE_TOOLBAR,
-      spellChecker: false,
-      status: false,
-      autofocus: false,
-      minHeight: el.rows >= 4 ? '120px' : '90px',
-      placeholder: el.placeholder || '',
-      promptURLs: true,
-    });
+    try {
+      mdes[key] = new EasyMDE({
+        element: el,
+        toolbar: MDE_TOOLBAR,
+        spellChecker: false,
+        status: false,
+        autofocus: false,
+        minHeight: el.rows >= 4 ? '120px' : '90px',
+        placeholder: el.placeholder || '',
+        promptURLs: true,
+      });
+    } catch (e) {
+      // One broken field must never take down the whole block
+      delete mdes[key];
+    }
   });
 }
 
@@ -859,9 +897,15 @@ function getMDE(uid, field) {
   return mdes[key] ? mdes[key].value() : '';
 }
 
-function setMDE(uid, field, value) {
+function setMDE(uid, field, value, block) {
   const key = `${uid}:${field}`;
-  if (mdes[key]) mdes[key].value(value ?? '');
+  if (mdes[key]) {
+    mdes[key].value(value ?? '');
+  } else if (block) {
+    // EasyMDE not active — write straight to the underlying textarea
+    const el = block.querySelector(`[data-f="${field}"]`);
+    if (el) el.value = value ?? '';
+  }
 }
 
 function destroyMDEs(uid) {
@@ -896,9 +940,20 @@ function addBEC(data) {
   if (data) populateBECBlock(block, data, uid);
 }
 
+// Counts deliberate deletions this session. Publishing fewer cases than
+// GitHub has is only ever allowed when this is > 0 — a blank/partial form
+// (new device, failed load) must never be able to wipe a portfolio.
+let removedCases = 0;
+
 function removeBlock(uid) {
+  const block = document.querySelector(`[data-uid="${uid}"]`);
+  if (!block) return;
+  const id = val(block.querySelector('[data-f="id"]'));
+  const label = id ? `case "${id}"` : 'this case';
+  if (!confirm(`Remove ${label} from the form?\n\nIt will be deleted from your live portfolio when you next publish.`)) return;
   destroyMDEs(uid);
-  document.querySelector(`[data-uid="${uid}"]`)?.remove();
+  block.remove();
+  removedCases++;
 }
 
 function addStep(btn, text) {
@@ -920,8 +975,21 @@ function addBECTimelineRow(btn, time, activity, detail) {
 ═══════════════════════════════════════════════════ */
 function f(block, field) { return block.querySelector(`[data-f="${field}"]`); }
 
+// Setting a <select> to a value with no matching option silently blanks it,
+// and the blank would then be collected as '' on publish — keep the default instead.
+function safeSet(block, field, v) {
+  const el = f(block, field);
+  if (!el) return;
+  const value = v ?? '';
+  if (el.tagName === 'SELECT') {
+    if ([...el.options].some(o => o.value === value)) el.value = value;
+  } else {
+    el.value = value;
+  }
+}
+
 function populateAlertBlock(block, d, uid) {
-  const set = (field, v) => { const el = f(block, field); if (el) el.value = v ?? ''; };
+  const set = (field, v) => safeSet(block, field, v);
   // plain inputs / selects / non-MDE textareas
   set('id', d.id); set('alertName', d.alertName); set('alertId', d.alertId ?? '');
   set('date', d.date); set('severity', d.severity); set('hostOrAccount', d.hostOrAccount);
@@ -929,36 +997,36 @@ function populateAlertBlock(block, d, uid) {
   set('wasSuccessful', d.wasSuccessful); set('verdict', d.verdict);
   set('categorisation', d.categorisation); set('queries', d.queries ?? '');
   set('escalation', d.escalation); set('alertTuning', d.alertTuning ?? '');
-  set('tools', (d.tools ?? []).join('\n'));
+  set('tools', arr(d.tools).join('\n'));
   const vc = f(block, 'verified'); if (vc) vc.checked = d.verified ?? false;
   // MDE fields — must call after initMDEs
-  setMDE(uid, 'whyTriggered', d.whyTriggered);
-  setMDE(uid, 'whatHappened', d.whatHappened);
-  setMDE(uid, 'evidence', d.evidence);
-  setMDE(uid, 'verdictJustification', d.verdictJustification);
-  setMDE(uid, 'containment', d.containment);
-  setMDE(uid, 'lessonsLearned', d.lessonsLearned);
+  setMDE(uid, 'whyTriggered', d.whyTriggered, block);
+  setMDE(uid, 'whatHappened', d.whatHappened, block);
+  setMDE(uid, 'evidence', d.evidence, block);
+  setMDE(uid, 'verdictJustification', d.verdictJustification, block);
+  setMDE(uid, 'containment', d.containment, block);
+  setMDE(uid, 'lessonsLearned', d.lessonsLearned, block);
 
   const stepBtn = block.querySelector('[data-rep="steps"] + button');
-  (d.investigationSteps ?? []).forEach(s => addStep(stepBtn, s));
+  arr(d.investigationSteps).forEach(s => addStep(stepBtn, s));
 }
 
 function populateBECBlock(block, d, uid) {
-  const set = (field, v) => { const el = f(block, field); if (el) el.value = v ?? ''; };
+  const set = (field, v) => safeSet(block, field, v);
   set('id', d.id); set('caseName', d.caseName); set('caseReference', d.caseReference);
   set('affectedAccount', d.affectedAccount); set('incidentDateFrom', d.incidentDateFrom);
   set('incidentDateTo', d.incidentDateTo); set('investigationDate', d.investigationDate);
-  set('tools', (d.tools ?? []).join('\n')); set('pdfUrl', d.pdfUrl ?? '');
+  set('tools', arr(d.tools).join('\n')); set('pdfUrl', d.pdfUrl ?? '');
   const vc = f(block, 'verified'); if (vc) vc.checked = d.verified ?? false;
   // MDE fields
-  setMDE(uid, 'attackNarrative', d.attackNarrative);
-  setMDE(uid, 'initialAccess', d.initialAccess);
-  setMDE(uid, 'unauthorisedActivity', d.unauthorisedActivity);
-  setMDE(uid, 'dataAccess', d.dataAccess);
-  setMDE(uid, 'lessonsLearned', d.lessonsLearned);
+  setMDE(uid, 'attackNarrative', d.attackNarrative, block);
+  setMDE(uid, 'initialAccess', d.initialAccess, block);
+  setMDE(uid, 'unauthorisedActivity', d.unauthorisedActivity, block);
+  setMDE(uid, 'dataAccess', d.dataAccess, block);
+  setMDE(uid, 'lessonsLearned', d.lessonsLearned, block);
 
   const tlBtn = block.querySelector('[data-rep="timeline"] + button');
-  (d.timeline ?? []).forEach(e => addBECTimelineRow(tlBtn, e.time, e.activity, e.detail ?? ''));
+  arr(d.timeline).forEach(e => addBECTimelineRow(tlBtn, e?.time, e?.activity, e?.detail ?? ''));
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1111,6 +1179,16 @@ async function loadFromGitHub(silent = false) {
     return;
   }
 
+  // Don't blow away unpublished edits without asking
+  if (!silent) {
+    const cur = collectData();
+    const hasContent = cur.profile.name || cur.alerts.length || cur.bec.length;
+    if (hasContent && JSON.stringify(cur) !== cleanState && !confirm(
+      'Loading from GitHub will replace everything currently in the form,\n' +
+      'including any unpublished edits.\n\nContinue?'
+    )) return;
+  }
+
   if (!silent) showNotif('Loading from GitHub…', 'success', 30000);
 
   try {
@@ -1120,9 +1198,15 @@ async function loadFromGitHub(silent = false) {
     );
 
     if (!res.ok) {
-      const err = await res.json();
-      if (!silent) showNotif(`✗ ${err.message ?? 'Could not fetch portfolio.json'}`, 'error', 6000);
-      else restoreDraft();
+      const err = await res.json().catch(() => ({}));
+      if (!silent) {
+        showNotif(`✗ ${ghErrorHint(res.status, err.message)}`, 'error', 8000);
+      } else {
+        // The member must know their portfolio did NOT load — otherwise they
+        // may re-enter work into what looks like a fresh editor.
+        showNotif(`⚠ Couldn't auto-load your portfolio: ${ghErrorHint(res.status, err.message)}`, 'error', 12000);
+        restoreDraft();
+      }
       return;
     }
 
@@ -1131,14 +1215,20 @@ async function loadFromGitHub(silent = false) {
     const json = decodeURIComponent(escape(atob(file.content.replace(/\n/g, ''))));
     const data = JSON.parse(json);
     populateForm(data);
+    cleanState = JSON.stringify(collectData()); // this state already lives on GitHub
+    clearDraft();
     showNotif(
       silent ? '✓ Loaded from GitHub.' : '✓ Loaded your current portfolio from GitHub.',
       'success',
       silent ? 2000 : 4000
     );
   } catch (e) {
-    if (!silent) showNotif(`✗ ${e.message}`, 'error', 6000);
-    else restoreDraft();
+    if (!silent) {
+      showNotif(`✗ ${e.message}`, 'error', 6000);
+    } else {
+      showNotif(`⚠ Couldn't auto-load your portfolio (${e.message}) — check your connection, then click ⬇ Load from GitHub.`, 'error', 12000);
+      restoreDraft();
+    }
   }
 }
 
@@ -1155,14 +1245,36 @@ async function publishToGitHub() {
     return;
   }
 
-  // Validate: every case must have a Case ID (empty ID crashes the Astro build)
+  // Validate before publishing — catch everything that would break the
+  // build or produce a broken-looking site, with a clear message.
   const data = collectData();
-  const missingId = [...data.alerts, ...data.bec].filter(c => !c.id);
-  if (missingId.length > 0) {
-    showNotif(
-      `✗ ${missingId.length} case(s) are missing a Case ID — fill in the Case ID field on every card before publishing.`,
-      'error', 8000
-    );
+  const problems = [];
+
+  if (!data.profile.name) {
+    problems.push('Add your Full Name in the Profile section (without it, your site shows the setup screen instead of your portfolio).');
+  }
+
+  const allCases = [...data.alerts, ...data.bec];
+  const missingId = allCases.filter(c => !c.id).length;
+  if (missingId > 0) {
+    problems.push(`${missingId} case(s) are missing a Case ID — fill in the Case ID on every card.`);
+  }
+
+  // IDs become URLs (/alerts/ALT-001/) — block characters that break routing
+  const badId = allCases.map(c => c.id).filter(id => id && !/^[A-Za-z0-9._-]+$/.test(id));
+  if (badId.length > 0) {
+    problems.push(`Case ID "${badId[0]}" — use only letters, numbers, dashes, dots or underscores (e.g. ALT-001).`);
+  }
+
+  // Duplicate IDs would collide on the same URL
+  const idSet = new Set(); const dupes = new Set();
+  allCases.forEach(c => { if (!c.id) return; if (idSet.has(c.id)) dupes.add(c.id); idSet.add(c.id); });
+  if (dupes.size > 0) {
+    problems.push(`Duplicate Case ID "${[...dupes][0]}" — every case needs a unique ID.`);
+  }
+
+  if (problems.length > 0) {
+    showNotif(`✗ ${problems[0]}`, 'error', 9000);
     return;
   }
 
@@ -1185,10 +1297,21 @@ async function publishToGitHub() {
     }
   } catch {}
 
-  // Safety check: never silently publish fewer cases than GitHub already has
+  // Safety check: never publish fewer cases than GitHub already has.
+  // If the member didn't deliberately remove any cards this session, the
+  // missing cases mean the form was never loaded — hard block, no dialog
+  // to click through. Only intentional deletions get a confirm.
   const ghAlerts = currentData?.alerts?.length ?? 0;
   const ghBec    = currentData?.bec?.length    ?? 0;
   if (data.alerts.length < ghAlerts || data.bec.length < ghBec) {
+    if (removedCases === 0 && !loadedFromFile) {
+      showNotif(
+        `✗ Publish blocked: your live portfolio has ${ghAlerts + ghBec} case(s) but this form only has ${data.alerts.length + data.bec.length}. ` +
+        `Click ⬇ Load from GitHub to pull in your existing cases first — publishing now would delete them.`,
+        'error', 12000
+      );
+      return;
+    }
     const ok = confirm(
       `⚠ OVERWRITE WARNING\n\n` +
       `Your portfolio on GitHub currently has:\n` +
@@ -1216,19 +1339,36 @@ async function publishToGitHub() {
   try {
     const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
     if (res.ok) {
+      clearDraft(); // published — the draft is no longer "unsaved work"
+      cleanState = JSON.stringify(collectData());
       showNotif(`✓ Published! Site rebuilds in ~60 s → github.com/${owner}/${repo}/actions`, 'success', 8000);
     } else {
-      const err = await res.json();
-      showNotif(`✗ ${err.message ?? 'GitHub returned an error. Check your token and repo name.'}`, 'error', 8000);
+      const err = await res.json().catch(() => ({}));
+      showNotif(`✗ ${ghErrorHint(res.status, err.message)}`, 'error', 10000);
     }
   } catch (e) {
     showNotif(`✗ Network error: ${e.message}`, 'error', 8000);
   }
 }
 
+// Translate raw GitHub API failures into something a member can act on
+function ghErrorHint(status, message) {
+  if (status === 401) return 'GitHub rejected your token (expired or revoked). Create a new token and save it in ⚙ GitHub Settings.';
+  if (status === 403) return message?.includes('rate limit')
+    ? 'GitHub rate limit hit — wait a few minutes and try again.'
+    : 'Token not allowed to write to this repo — make sure it has the "repo" scope and access to this repository.';
+  if (status === 404) return 'Repo not found — check the Username and Repository Name in ⚙ GitHub Settings (and that your token can access it).';
+  if (status === 409) return 'GitHub reported a conflict — click ⬇ Load from GitHub, re-apply your change, then publish again.';
+  return message ?? 'GitHub returned an error. Check your token and repo name in ⚙ GitHub Settings.';
+}
+
 /* ═══════════════════════════════════════════════════
    LOAD JSON
 ═══════════════════════════════════════════════════ */
+// Loading a backup file is a deliberate act — if it holds fewer cases than
+// GitHub, publish shows the overwrite confirm instead of hard-blocking.
+let loadedFromFile = false;
+
 function loadJSON(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1237,6 +1377,7 @@ function loadJSON(input) {
     try {
       const d = JSON.parse(e.target.result);
       populateForm(d);
+      loadedFromFile = true;
       showNotif('Portfolio loaded — check all fields then publish.');
     } catch {
       showNotif('Could not parse the file — make sure it is a valid portfolio.json.', 'error');
@@ -1247,6 +1388,15 @@ function loadJSON(input) {
 }
 
 function populateForm(d) {
+  // Drop every existing EasyMDE instance before wiping the blocks,
+  // otherwise the registry keeps dead editors around forever.
+  Object.keys(mdes).forEach(k => {
+    try { mdes[k].toTextArea(); } catch {}
+    delete mdes[k];
+  });
+  removedCases = 0;      // fresh baseline — the form now mirrors a known source
+  loadedFromFile = false; // loadJSON re-sets this right after populateForm
+
   const p = d.profile ?? {};
   document.getElementById('p-name').value     = p.name     ?? '';
   document.getElementById('p-role').value     = p.role     ?? '';
@@ -1260,32 +1410,50 @@ function populateForm(d) {
 
   document.getElementById('alerts-container').innerHTML = '';
   alertCount = 0;
-  (d.alerts ?? []).forEach(a => addAlert(a));
+  arr(d.alerts).forEach(a => addAlert(a ?? {}));
 
   document.getElementById('bec-container').innerHTML = '';
   becCount = 0;
-  (d.bec ?? []).forEach(b => addBEC(b));
+  arr(d.bec).forEach(b => addBEC(b ?? {}));
 }
 
 /* ═══════════════════════════════════════════════════
    AUTOSAVE TO LOCALSTORAGE
-   Saves the raw JSON every 60 s so work isn't lost on tab close.
+   Saves the raw JSON every 30 s (and on tab close) so work
+   isn't lost. The draft is cleared after a successful publish,
+   so an existing draft always means "unpublished work".
 ═══════════════════════════════════════════════════ */
+// Snapshot of the last state that is already safe on GitHub (published or
+// freshly loaded). If the form still matches it, there is nothing to draft —
+// prevents a phantom "unpublished work" prompt on the next visit.
+let cleanState = null;
+
 function autosave() {
   try {
-    localStorage.setItem('socsim_draft', JSON.stringify(collectData()));
+    const json = JSON.stringify(collectData());
+    if (json === cleanState) { clearDraft(); return; }
+    localStorage.setItem('socsim_draft', json);
   } catch {}
 }
 
-function restoreDraft() {
+function clearDraft() {
+  try { localStorage.removeItem('socsim_draft'); } catch {}
+}
+
+function getDraft() {
   try {
-    const raw = localStorage.getItem('socsim_draft');
-    if (!raw) return;
-    const d = JSON.parse(raw);
-    // Only restore if there's real content (non-empty name)
-    if (!d?.profile?.name && !d?.alerts?.length && !d?.bec?.length) return;
-    if (confirm('Restore unsaved draft from your last session?')) populateForm(d);
-  } catch {}
+    const d = JSON.parse(localStorage.getItem('socsim_draft'));
+    // Only count as a draft if there's real content
+    if (!d?.profile?.name && !d?.alerts?.length && !d?.bec?.length) return null;
+    return d;
+  } catch { return null; }
+}
+
+function restoreDraft() {
+  const d = getDraft();
+  if (!d) return;
+  if (confirm('Restore unsaved draft from your last session?')) populateForm(d);
+  else clearDraft();
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1306,10 +1474,22 @@ window.addEventListener('load', async function () {
     localStorage.getItem('gh_repo')?.trim() &&
     localStorage.getItem('gh_token')?.trim()
   );
+
+  // An unpublished draft always wins over the GitHub copy — it is the
+  // newer work. Publishing clears the draft, so this only ever fires
+  // when there genuinely is something unsaved.
+  const draft = getDraft();
+  if (draft) {
+    if (confirm('You have unpublished work from your last session.\n\nOK = restore it · Cancel = discard it and load your published portfolio instead.')) {
+      populateForm(draft);
+      showNotif('✓ Draft restored — publish when you\'re ready.', 'success', 5000);
+      return;
+    }
+    clearDraft();
+  }
+
   if (hasCredentials) {
     await loadFromGitHub(true);
-  } else {
-    restoreDraft();
   }
 });
 </script>

@@ -39,7 +39,7 @@ const { editorUrl } = Astro.props;
     font-family: 'Big Shoulders Display', sans-serif;
     font-weight: 700;
     font-size: 2.25rem;
-    color: #fff;
+    color: var(--heading);
     letter-spacing: 0.01em;
     margin-bottom: 16px;
     line-height: 1.1;
@@ -58,7 +58,7 @@ const { editorUrl } = Astro.props;
     align-items: center;
     gap: 8px;
     background: var(--accent);
-    color: #000;
+    color: var(--accent-contrast);
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.78rem;
     font-weight: 600;
@@ -70,7 +70,7 @@ const { editorUrl } = Astro.props;
     margin-bottom: 20px;
   }
 
-  .gs-btn:hover { background: #d96d1a; }
+  .gs-btn:hover { background: var(--accent-hover); }
 
   .gs-hint {
     font-family: 'JetBrains Mono', monospace;

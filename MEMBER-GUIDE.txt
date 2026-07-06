@@ -1,0 +1,284 @@
+════════════════════════════════════════════════════════════
+SOCSIM MEMBER PORTFOLIO — SETUP AND USAGE GUIDE
+The SOC Simulation Project · skool.com/socsim/about
+════════════════════════════════════════════════════════════
+
+
+WHAT IS THIS?
+─────────────
+Your portfolio is a personal website where you document every
+alert investigation and BEC case drop you complete in the SOCSIM
+lab. It shows the work behind the cert — your methodology, your
+findings, your tooling.
+
+You fill it in through a form-based editor. No coding required.
+
+
+────────────────────────────────────────────────────────────
+SECTION 1 — FIRST-TIME SETUP (do this once)
+────────────────────────────────────────────────────────────
+
+STEP 1 — Create your portfolio repo
+  1. Go to: github.com/dalancoburn/socsim-portfolio
+  2. Click the green "Use this template" button
+  3. Click "Create a new repository"
+  4. Name it whatever you like (e.g. socsim-portfolio)
+  5. Set it to Public
+  6. Click "Create repository"
+
+
+STEP 2 — Enable GitHub Pages
+  1. In your new repo, click "Settings" (top tab)
+  2. In the left sidebar, click "Pages"
+  3. Under "Build and deployment":
+     - Source: GitHub Actions
+  4. Click Save
+  5. Wait about 60 seconds, then your site will be live at:
+     https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/
+
+
+STEP 3 — Create a Personal Access Token (PAT)
+  This gives the editor permission to save your work directly
+  to your repo. You only do this once.
+
+  1. Go to: github.com/settings/tokens
+  2. Click "Generate new token" → "Generate new token (classic)"
+  3. Give it a name like: SOCSIM Portfolio Editor
+  4. Set Expiration to 90 days (or "No expiration" if you prefer)
+  5. Under "Select scopes", tick the box next to: repo
+  6. Scroll down, click "Generate token"
+  7. COPY the token now — GitHub only shows it once.
+     It will look something like: ghp_xxxxxxxxxxxxxxxxxxxx
+
+
+STEP 4 — Open your editor and connect it to your repo
+  1. Go to: https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html
+  2. Click the "⚙ GitHub Settings" panel at the top
+  3. Fill in:
+       GitHub Username:   your GitHub username
+       Repository Name:   your repo name (e.g. socsim-portfolio)
+       Personal Access Token: paste the token from Step 3
+  4. Click "Save settings"
+  5. Click "⬇ Load from GitHub" to pull in your current data
+  6. You are now connected — this editor is yours.
+
+
+────────────────────────────────────────────────────────────
+SECTION 2 — FILLING IN YOUR PROFILE
+────────────────────────────────────────────────────────────
+
+After loading, scroll to the Profile section and fill in:
+
+  Full Name        Your real name
+  Role / Title     e.g. Security Analyst · Blue Team
+  Tagline          One sentence about your focus and goals
+  Location         City, Country
+  Photo URL        Optional — a direct link to a profile photo
+  LinkedIn         Your LinkedIn profile URL
+  GitHub           Your GitHub profile URL
+  Email            Your email address (optional)
+
+Scroll down to the Theme section and pick one that suits you:
+  Operator  — dark charcoal and orange (default)
+  Terminal  — pure black and neon green
+  Midnight  — deep navy and sky blue
+  Obsidian  — dark with violet
+  Arctic    — clean white and blue
+  Crimson   — dark with red
+
+Click "⬆ Publish to GitHub" when done.
+Your profile goes live in about 60 seconds.
+
+
+────────────────────────────────────────────────────────────
+SECTION 3 — ADDING INVESTIGATIONS
+────────────────────────────────────────────────────────────
+
+Every time you complete an investigation in the SOCSIM lab,
+add it to your portfolio. Here is the process:
+
+  1. Open your editor:
+     https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html
+
+  2. Click "⬇ Load from GitHub"
+     This loads all your existing investigations so you do not
+     overwrite anything.
+
+  3. Scroll down to the relevant section:
+     — Alert Investigations  →  click "+ Add Alert Investigation"
+     — BEC Case Drops        →  click "+ Add BEC Case Drop"
+
+  4. Fill in the fields (see below for what each one means)
+
+  5. Click "⬆ Publish to GitHub"
+     Your site updates in about 60 seconds.
+
+
+ALERT INVESTIGATION FIELDS
+  Case ID            A unique code for this investigation.
+                     Suggested format: ALT-001, ALT-002, etc.
+  Alert Name         The name of the alert as it appeared in the tool.
+  Alert ID           Optional. The alert ID or link from Sentinel/MDE.
+  Date               When you investigated it.
+  Severity           Critical / High / Medium / Low
+  Host / Account     The affected machine or user account.
+  Date & Time        When the alert fired (include timezone, e.g. UTC).
+  What triggered it  Which rule or detection fired, and why.
+  Why it triggered   The detection logic behind the rule.
+  What happened      Your narrative of the incident.
+  Evidence           Artefacts, log entries, process trees, decoded output.
+  Was it successful  Did the attack succeed? Yes / No / Unknown
+  Verdict            Malicious / Non-malicious / Suspicious
+  Verdict reason     Why you reached that verdict.
+  Investigation steps A numbered walkthrough of what you did.
+  KQL Queries        Paste any queries you used (raw KQL, line breaks ok).
+  Categorisation     True Positive / Benign True Positive / False Positive
+  Escalation         Urgent / Non-urgent / None
+  Containment        What actions were taken or recommended.
+  Alert Tuning       Does the detection rule need adjusting?
+  Lessons Learned    What you would do differently next time.
+  Tools Used         One tool per line (e.g. Microsoft Sentinel, KQL, etc.)
+  SOCSIM Verified    Tick this if the investigation was done in the live lab.
+
+
+BEC CASE DROP FIELDS
+  Case ID             A unique code. Suggested format: BEC-001, BEC-002, etc.
+  Case Name           Descriptive title for the case.
+  Case Reference      The WDLabs reference number if provided.
+  Affected Account    The compromised email account.
+  Incident Dates      When the incident started and ended.
+  Investigation Date  When you investigated it.
+  PDF Report URL      Optional. If you have a PDF version of your report,
+                      upload it to your repo (see screenshots guide below)
+                      and paste the URL here.
+  Attack Narrative    Plain English summary of what happened. Write this
+                      last, as if explaining to a non-technical manager.
+  Timeline            Chronological record of activity. Each entry has:
+                        Time      e.g. 02:14 UTC
+                        Activity  Short label (e.g. "Threat actor signs in")
+                        Detail    Longer description of what happened.
+  Initial Access      How did the threat actor get in?
+  Unauthorised Activity  What did they do once inside?
+  Data Access         What data was accessed or exfiltrated?
+  Lessons Learned     What you would approach differently.
+  Tools Used          One tool per line.
+  SOCSIM Verified     Tick this if done in the live lab.
+
+
+────────────────────────────────────────────────────────────
+SECTION 4 — FORMATTING YOUR WRITE-UPS
+────────────────────────────────────────────────────────────
+
+All the main narrative fields (What Happened, Evidence, Attack
+Narrative, Findings, Lessons Learned, etc.) support Markdown.
+You do not need to know Markdown — just use the toolbar above
+each field.
+
+Toolbar buttons:
+  B         Bold text
+  I         Italic text
+  ≡         Bullet list
+  1.        Numbered list
+  < >       Inline code (good for command names, IPs, filenames)
+  Eye       Preview — see how it will look on your portfolio
+
+Useful shortcuts you can type directly:
+  **bold text**          makes text bold
+  `code or IP address`   formats as code
+  - item                 bullet list item
+  1. item                numbered list item
+
+
+────────────────────────────────────────────────────────────
+SECTION 5 — ADDING SCREENSHOTS
+────────────────────────────────────────────────────────────
+
+Screenshots make your write-ups much more compelling. Here is
+how to add them:
+
+  1. Take your screenshot and save it as a .png or .jpg file.
+
+  2. Go to your GitHub repo in a browser.
+
+  3. Navigate to the folder: src/assets/
+     (Create this folder if it does not exist — click
+     "Add file" → "Create new file", name it src/assets/.gitkeep,
+     commit it.)
+
+  4. Inside src/assets/, click "Add file" → "Upload files".
+     Drag your screenshot in and click "Commit changes".
+
+  5. Click on the uploaded file to open it.
+     Click the "Raw" button.
+     Copy the URL from your browser address bar.
+     It will look like:
+     https://raw.githubusercontent.com/USERNAME/REPO/main/src/assets/screenshot.png
+
+  6. In your editor, paste it into any narrative field like this:
+     ![Description of what the screenshot shows](paste-url-here)
+
+The screenshot will appear in your published portfolio.
+
+TIP: Use the camera icon (📷) in the editor toolbar for a
+step-by-step reminder of this process.
+
+
+────────────────────────────────────────────────────────────
+SECTION 6 — UPDATING YOUR PORTFOLIO
+────────────────────────────────────────────────────────────
+
+Every time the SOCSIM template is updated with new investigation
+types, improved styling, or new features, you can pull those
+updates in without touching your data.
+
+  1. Open your editor.
+  2. Click "↻ Update template" in the header.
+  3. Confirm the dialog — your investigations are safe.
+  4. The update runs automatically in the background.
+  5. Your site rebuilds in about 60 seconds with the new features.
+
+Your portfolio.json (your profile and all your investigations)
+is NEVER touched by the update. Only the site code changes.
+
+
+────────────────────────────────────────────────────────────
+SECTION 7 — QUICK REFERENCE
+────────────────────────────────────────────────────────────
+
+Your portfolio URL:
+  https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/
+
+Your editor URL:
+  https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html
+
+Your repo on GitHub:
+  https://github.com/YOUR-USERNAME/YOUR-REPO-NAME
+
+To update your portfolio:
+  Open editor → Load from GitHub → make changes → Publish
+
+To see your deploy running:
+  Go to your repo → click the "Actions" tab
+
+If something looks wrong:
+  Hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R)
+  Wait 60 seconds and try again — deploys take up to 60 seconds.
+
+
+────────────────────────────────────────────────────────────
+CASE ID NAMING CONVENTION
+────────────────────────────────────────────────────────────
+
+Use this format to keep IDs consistent:
+
+  Alert investigations:   ALT-001, ALT-002, ALT-003 ...
+  BEC case drops:         BEC-001, BEC-002, BEC-003 ...
+
+This keeps your portfolio sortable and compatible with the
+future central SOCSIM member directory.
+
+
+════════════════════════════════════════════════════════════
+Questions? Head to the SOCSIM community:
+skool.com/socsim/about
+════════════════════════════════════════════════════════════

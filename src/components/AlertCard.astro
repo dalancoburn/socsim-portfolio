@@ -31,6 +31,7 @@ interface Alert {
 interface Props {
   alert: Alert;
   detailUrl?: string;
+  compact?: boolean;
 }
 
 const { alert, detailUrl } = Astro.props;
@@ -60,7 +61,20 @@ const catLabel: Record<string, string> = {
   FP:  'False Positive',
 };
 
-const compact = !!detailUrl;
+const compact = Astro.props.compact ?? !!detailUrl;
+
+// Empty or malformed dates must never render as "Invalid Date"
+function fmtDate(iso: string | undefined): string {
+  if (!iso?.trim()) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso; // show the raw text rather than nothing
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+const dateLabel = fmtDate(alert.date);
+
+// Tolerate hand-edited portfolio.json where arrays were removed
+const steps = alert.investigationSteps ?? [];
+const tools = alert.tools ?? [];
 ---
 
 <article class:list={['case-card', compact && 'card-compact']}>
@@ -83,12 +97,16 @@ const compact = !!detailUrl;
       </h2>
 
       <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:16px;">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
-          {new Date(alert.date).toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' })}
-        </span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
-          {alert.hostOrAccount}
-        </span>
+        {dateLabel && (
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
+            {dateLabel}
+          </span>
+        )}
+        {alert.hostOrAccount && (
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
+            {alert.hostOrAccount}
+          </span>
+        )}
       </div>
 
       {compact && (
@@ -165,11 +183,11 @@ const compact = !!detailUrl;
       </div>
 
       <!-- Investigation Steps -->
-      {alert.investigationSteps.length > 0 && (
+      {steps.length > 0 && (
         <div class="case-section">
           <div class="case-section-label">Investigation Steps</div>
           <ol class="steps-list">
-            {alert.investigationSteps.map((step, i) => (
+            {steps.map((step, i) => (
               <li class="step-item">
                 <span class="step-num">{i + 1}</span>
                 <span class="step-text">{step}</span>
@@ -214,11 +232,11 @@ const compact = !!detailUrl;
       )}
 
       <!-- Tools -->
-      {alert.tools.length > 0 && (
+      {tools.length > 0 && (
         <div class="case-section">
           <div class="case-section-label">Tools Used</div>
           <div class="tools-list">
-            {alert.tools.map((t) => <span class="tool-tag">{t}</span>)}
+            {tools.map((t) => <span class="tool-tag">{t}</span>)}
           </div>
         </div>
       )}

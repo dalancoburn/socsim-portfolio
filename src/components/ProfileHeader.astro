@@ -20,11 +20,13 @@ interface Props {
 
 const { profile } = Astro.props;
 
-const initials = profile.name
-  .split(' ')
+const initials = (profile.name ?? '')
+  .split(/\s+/)
+  .filter(Boolean)
   .map((n) => n[0])
   .slice(0, 2)
-  .join('');
+  .join('')
+  .toUpperCase() || '◈';
 ---
 <header class="profile-header">
   <div class="profile-avatar">

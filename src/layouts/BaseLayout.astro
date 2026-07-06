@@ -10,9 +10,19 @@ const { title } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
 // ── THEME SYSTEM ────────────────────────────────────────────
-// Each theme is a complete set of CSS custom property overrides.
-// The selected theme is written as an inline <style> in <head>,
-// which overrides the defaults set in global.css.
+// Each theme is a complete set of CSS custom property overrides,
+// applied as an inline style on <html> so it beats global.css
+// regardless of stylesheet order. The theme name is also stamped
+// on <html data-theme="…"> so global.css can carry structural
+// overrides (e.g. badge colours on the light Arctic theme).
+//
+// Vars beyond the base palette:
+//   --heading          headings / strong text (was hard-coded #fff)
+//   --nav-bg           nav bar background
+//   --code-bg          code / pre / KQL block background
+//   --code-text        code / pre / KQL block text
+//   --accent-contrast  text sitting ON the accent colour (buttons)
+//   --accent-hover     accent hover shade
 
 const THEMES: Record<string, Record<string, string>> = {
   operator: {
@@ -23,9 +33,15 @@ const THEMES: Record<string, Record<string, string>> = {
     '--border-accent':'rgba(240,122,34,0.3)',
     '--accent':       '#f07a22',
     '--accent-bg':    'rgba(240,122,34,0.05)',
+    '--accent-contrast':'#000000',
+    '--accent-hover': '#d96d1a',
     '--text':         '#e8e8e8',
     '--text-dim':     '#888888',
     '--text-dimmer':  '#555555',
+    '--heading':      '#ffffff',
+    '--nav-bg':       'rgba(0,0,0,0.5)',
+    '--code-bg':      '#0a0a0a',
+    '--code-text':    '#c8c8c8',
     '--grid-line':    'rgba(255,255,255,0.025)',
     '--green':        '#22c55e',
   },
@@ -37,9 +53,15 @@ const THEMES: Record<string, Record<string, string>> = {
     '--border-accent':'rgba(0,230,118,0.35)',
     '--accent':       '#00e676',
     '--accent-bg':    'rgba(0,230,118,0.05)',
+    '--accent-contrast':'#000000',
+    '--accent-hover': '#00c853',
     '--text':         '#ccffd8',
     '--text-dim':     '#5db87a',
     '--text-dimmer':  '#2d5c40',
+    '--heading':      '#eafff0',
+    '--nav-bg':       'rgba(0,0,0,0.6)',
+    '--code-bg':      '#050505',
+    '--code-text':    '#9fe8b8',
     '--grid-line':    'rgba(0,230,118,0.04)',
     '--green':        '#00e676',
   },
@@ -51,9 +73,15 @@ const THEMES: Record<string, Record<string, string>> = {
     '--border-accent':'rgba(56,189,248,0.35)',
     '--accent':       '#38bdf8',
     '--accent-bg':    'rgba(56,189,248,0.05)',
+    '--accent-contrast':'#04121f',
+    '--accent-hover': '#0ea5e9',
     '--text':         '#e2e8f0',
     '--text-dim':     '#94a3b8',
     '--text-dimmer':  '#475569',
+    '--heading':      '#ffffff',
+    '--nav-bg':       'rgba(4,8,20,0.55)',
+    '--code-bg':      '#060b18',
+    '--code-text':    '#bcd3e8',
     '--grid-line':    'rgba(56,189,248,0.04)',
     '--green':        '#34d399',
   },
@@ -65,9 +93,15 @@ const THEMES: Record<string, Record<string, string>> = {
     '--border-accent':'rgba(167,139,250,0.35)',
     '--accent':       '#a78bfa',
     '--accent-bg':    'rgba(167,139,250,0.05)',
+    '--accent-contrast':'#100a1f',
+    '--accent-hover': '#8b6cf7',
     '--text':         '#fafafa',
     '--text-dim':     '#a1a1aa',
     '--text-dimmer':  '#52525b',
+    '--heading':      '#ffffff',
+    '--nav-bg':       'rgba(0,0,0,0.5)',
+    '--code-bg':      '#0d0d10',
+    '--code-text':    '#cfc8e8',
     '--grid-line':    'rgba(167,139,250,0.03)',
     '--green':        '#4ade80',
   },
@@ -75,14 +109,20 @@ const THEMES: Record<string, Record<string, string>> = {
     '--bg':           '#f8fafc',
     '--surface':      '#ffffff',
     '--surface-2':    '#f1f5f9',
-    '--border':       'rgba(0,0,0,0.08)',
+    '--border':       'rgba(15,23,42,0.12)',
     '--border-accent':'rgba(3,105,161,0.35)',
     '--accent':       '#0369a1',
-    '--accent-bg':    'rgba(3,105,161,0.05)',
-    '--text':         '#0f172a',
+    '--accent-bg':    'rgba(3,105,161,0.06)',
+    '--accent-contrast':'#ffffff',
+    '--accent-hover': '#075985',
+    '--text':         '#1e293b',
     '--text-dim':     '#475569',
-    '--text-dimmer':  '#94a3b8',
-    '--grid-line':    'rgba(0,0,0,0.04)',
+    '--text-dimmer':  '#64748b',
+    '--heading':      '#0f172a',
+    '--nav-bg':       'rgba(255,255,255,0.85)',
+    '--code-bg':      '#0f172a',
+    '--code-text':    '#dbe4f0',
+    '--grid-line':    'rgba(15,23,42,0.045)',
     '--green':        '#15803d',
   },
   crimson: {
@@ -93,9 +133,15 @@ const THEMES: Record<string, Record<string, string>> = {
     '--border-accent':'rgba(244,63,94,0.35)',
     '--accent':       '#f43f5e',
     '--accent-bg':    'rgba(244,63,94,0.05)',
+    '--accent-contrast':'#1f0509',
+    '--accent-hover': '#e11d48',
     '--text':         '#fef2f2',
     '--text-dim':     '#fca5a5',
-    '--text-dimmer':  '#7f1d1d',
+    '--text-dimmer':  '#9f4343',
+    '--heading':      '#ffffff',
+    '--nav-bg':       'rgba(10,4,4,0.55)',
+    '--code-bg':      '#0a0505',
+    '--code-text':    '#e8c8c8',
     '--grid-line':    'rgba(244,63,94,0.04)',
     '--green':        '#4ade80',
   },
@@ -107,7 +153,7 @@ const themeVars = THEMES[themeName] ?? THEMES.operator;
 const inlineStyle = Object.entries(themeVars).map(([k, v]) => `${k}:${v}`).join(';');
 ---
 <!DOCTYPE html>
-<html lang="en" style={inlineStyle}>
+<html lang="en" data-theme={themeName in THEMES ? themeName : 'operator'} style={inlineStyle}>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />

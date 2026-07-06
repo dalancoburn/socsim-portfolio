@@ -30,21 +30,36 @@ interface BECCase {
 interface Props {
   bec: BECCase;
   detailUrl?: string;
+  compact?: boolean;
 }
 
 const { bec, detailUrl } = Astro.props;
-const compact = !!detailUrl;
+const compact = Astro.props.compact ?? !!detailUrl;
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+// Empty or malformed dates must never render as "Invalid Date"
+function fmtDate(iso: string | undefined): string {
+  if (!iso?.trim()) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso; // show the raw text rather than nothing
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+const dateFrom = fmtDate(bec.incidentDateFrom);
+const dateTo   = fmtDate(bec.incidentDateTo);
+const dateRange = dateFrom && dateTo && dateFrom !== dateTo
+  ? `${dateFrom} – ${dateTo}`
+  : (dateFrom || dateTo);
+
+// Tolerate hand-edited portfolio.json where arrays were removed
+const timeline = bec.timeline ?? [];
+const tools = bec.tools ?? [];
 ---
 
 <article class:list={['case-card', compact && 'card-compact']}>
 
   <div class="case-header">
     <div style="flex:1;min-width:0;">
-      <div class="case-id">{bec.id} · {bec.caseReference}</div>
+      <div class="case-id">{bec.caseReference ? `${bec.id} · ${bec.caseReference}` : bec.id}</div>
       <h2 class="case-title" style="font-size:1.5rem;">
         {detailUrl
           ? <a href={detailUrl} style="color:inherit;text-decoration:none;">{bec.caseName}</a>
@@ -52,12 +67,16 @@ function fmtDate(iso: string) {
         }
       </h2>
       <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:16px;">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
-          Affected: {bec.affectedAccount}
-        </span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
-          {fmtDate(bec.incidentDateFrom)} – {fmtDate(bec.incidentDateTo)}
-        </span>
+        {bec.affectedAccount && (
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
+            Affected: {bec.affectedAccount}
+          </span>
+        )}
+        {dateRange && (
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">
+            {dateRange}
+          </span>
+        )}
       </div>
 
       {compact && (
@@ -90,11 +109,11 @@ function fmtDate(iso: string) {
       </div>
 
       <!-- Timeline -->
-      {bec.timeline.length > 0 && (
+      {timeline.length > 0 && (
         <div class="case-section">
           <div class="case-section-label">Timeline of Events</div>
           <div class="bec-timeline">
-            {bec.timeline.map((entry) => (
+            {timeline.map((entry) => (
               <div class="bec-timeline-item">
                 <div class="timeline-time">{entry.time}</div>
                 <div class="bec-tl-right">
@@ -138,11 +157,11 @@ function fmtDate(iso: string) {
       )}
 
       <!-- Tools -->
-      {bec.tools.length > 0 && (
+      {tools.length > 0 && (
         <div class="case-section">
           <div class="case-section-label">Tools Used</div>
           <div class="tools-list">
-            {bec.tools.map((t) => <span class="tool-tag">{t}</span>)}
+            {tools.map((t) => <span class="tool-tag">{t}</span>)}
           </div>
         </div>
       )}

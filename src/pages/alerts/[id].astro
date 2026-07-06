@@ -5,10 +5,18 @@ import AlertCard from '../../components/AlertCard.astro';
 import portfolio from '../../data/portfolio.json';
 
 export const getStaticPaths = (() => {
-  return portfolio.alerts
-    .filter((a) => a.id)
-    .map((a) => ({
-      params: { id: a.id },
+  // Skip blank IDs and dedupe (first occurrence wins) so a member's
+  // copy-pasted duplicate Case ID can never break the whole build.
+  const seen = new Set<string>();
+  return ((portfolio as Record<string, any>).alerts ?? [])
+    .filter((a: any) => {
+      const id = String(a.id ?? '').trim();
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+    .map((a: any) => ({
+      params: { id: String(a.id).trim() },
       props: { alert: a },
     }));
 }) satisfies GetStaticPaths;
