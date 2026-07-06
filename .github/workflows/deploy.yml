@@ -71,4 +71,4 @@ jobs:
         if: steps.deploy1.outcome == 'failure'
         uses: actions/deploy-pages@v5
         with:
-          timeout: 1200000
+          timeout: 600000
