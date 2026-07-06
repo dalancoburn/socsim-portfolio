@@ -156,7 +156,11 @@
     /* ── INVESTIGATION BLOCKS ── */
     .inv-container{display:flex;flex-direction:column;gap:20px}
     .inv-block{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
-    .inv-block-header{background:var(--surface-2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .inv-block-header{background:var(--surface-2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
+    .inv-block-header:hover{background:#222}
+    .inv-caret{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--dimmer);width:14px;flex-shrink:0}
+    .inv-summary{flex:1;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+    .inv-body.hidden{display:none}
     .inv-type-badge{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:3px}
     .badge-alert{color:var(--accent);background:rgba(240,122,34,.1);border:1px solid rgba(240,122,34,.3)}
     .badge-bec{color:var(--yellow);background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.25)}
@@ -174,6 +178,17 @@
     .rep-cell{display:flex;flex-direction:column;gap:3px}
     .rep-cell-label{font-family:'JetBrains Mono',monospace;font-size:.54rem;color:var(--dimmer);letter-spacing:.1em;text-transform:uppercase}
     .rep-remove{align-self:flex-end;padding-bottom:1px}
+
+    /* ── CUSTOM SECTION ROWS ── */
+    .cs-row{background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:8px}
+    .cs-row-head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .cs-row-head .form-input{flex:1}
+    .cs-row .EasyMDEContainer .CodeMirror{background:#161616 !important}
+
+    /* ── SAVE STATUS ── */
+    .action-bar-hint.status-dirty{color:var(--accent)}
+    .action-bar-hint.status-clean{color:var(--green)}
+    .btn-primary.attn{box-shadow:0 0 0 3px rgba(240,122,34,.28)}
 
     /* ── VERIFIED TOGGLE ── */
     .verified-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:4px;background:var(--surface-2);cursor:pointer}
@@ -237,7 +252,7 @@
     <input type="file" id="file-input" accept=".json,application/json" onchange="loadJSON(this)" />
     <input type="file" id="img-input" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none;" onchange="uploadScreenshot(this)" />
     <button class="btn btn-sm" onclick="updateFromTemplate()" title="Pull the latest components, styles and editor from the SOCSIM template. Your portfolio data is never touched.">↻ Update template</button>
-    <button class="btn btn-primary btn-sm" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
+    <button class="btn btn-primary btn-sm js-publish" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
   </div>
 </header>
 
@@ -405,10 +420,10 @@
 
 <!-- ── ACTION BAR ──────────────────────────────────── -->
 <div class="action-bar">
-  <div class="action-bar-hint">Load from GitHub → add investigation → Publish → site updates in ~60 s</div>
+  <div class="action-bar-hint" id="save-status">Load from GitHub → add investigation → Publish → site updates in ~60 s</div>
   <div class="action-bar-right">
     <button class="btn btn-green btn-sm" onclick="loadFromGitHub()">⬇ Load from GitHub</button>
-    <button class="btn btn-primary" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
+    <button class="btn btn-primary js-publish" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
   </div>
 </div>
 
@@ -429,6 +444,37 @@ function selectTheme(name) {
     s.classList.toggle('active', s.dataset.theme === name);
   });
 }
+
+/* ── SAVE STATUS ──
+   Tracks whether the form differs from the last published/loaded state and
+   shows it in the action bar. `dirty` is a cheap hint set by input events;
+   autosave() does the authoritative JSON comparison every 30 s. */
+let populating = false; // suppress dirty-marking while programmatically filling the form
+
+function markDirty() {
+  if (populating) return;
+  renderSaveStatus('dirty');
+}
+
+function renderSaveStatus(state, detail = '') {
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  if (state === 'dirty') {
+    el.textContent = '● Unpublished changes' + (detail ? ` — ${detail}` : '');
+    el.className = 'action-bar-hint status-dirty';
+  } else if (state === 'clean') {
+    el.textContent = '✓ All changes published';
+    el.className = 'action-bar-hint status-clean';
+  } else {
+    el.textContent = 'Load from GitHub → add investigation → Publish → site updates in ~60 s';
+    el.className = 'action-bar-hint';
+  }
+  document.querySelectorAll('.js-publish').forEach(b => b.classList.toggle('attn', state === 'dirty'));
+}
+
+document.addEventListener('input', e => {
+  if (e.target.closest('.ed-body') && !e.target.closest('.gh-panel')) markDirty();
+});
 
 function showNotif(msg, type='success', ms=5000) {
   const n = document.getElementById('notif');
@@ -501,10 +547,12 @@ function updateGHStatus() {
 ═══════════════════════════════════════════════════ */
 function alertBlockHTML(uid, num) {
   return `<div class="inv-block" data-uid="${uid}" data-type="alert">
-  <div class="inv-block-header">
+  <div class="inv-block-header" onclick="toggleBlock('${uid}')" title="Click to collapse / expand">
+    <span class="inv-caret">▼</span>
     <span class="inv-type-badge badge-alert">Alert</span>
+    <span class="inv-summary"></span>
     <span class="inv-num">#${num}</span>
-    <button class="btn btn-danger" onclick="removeBlock('${uid}')">Remove</button>
+    <button class="btn btn-danger" onclick="event.stopPropagation();removeBlock('${uid}')">Remove</button>
   </div>
   <div class="inv-body">
 
@@ -670,6 +718,14 @@ function alertBlockHTML(uid, num) {
     <div class="form-divider"></div>
 
     <div class="inv-sub">
+      <div class="sub-label">Custom Sections <span class="form-hint" style="margin-left:6px;">optional — your own headings, e.g. MITRE ATT&amp;CK Mapping, References</span></div>
+      <div class="rep-rows" data-rep="custom"></div>
+      <button class="btn btn-add btn-sm" onclick="addCustomSection(this)">+ Add Custom Section</button>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
       <div class="verified-row">
         <input type="checkbox" data-f="verified" id="ver-${uid}" />
         <label for="ver-${uid}"><strong>SOCSIM Verified</strong> — mark as completed in a live SOCSIM lab</label>
@@ -685,10 +741,12 @@ function alertBlockHTML(uid, num) {
 ═══════════════════════════════════════════════════ */
 function becBlockHTML(uid, num) {
   return `<div class="inv-block" data-uid="${uid}" data-type="bec">
-  <div class="inv-block-header">
+  <div class="inv-block-header" onclick="toggleBlock('${uid}')" title="Click to collapse / expand">
+    <span class="inv-caret">▼</span>
     <span class="inv-type-badge badge-bec">BEC Case Drop</span>
+    <span class="inv-summary"></span>
     <span class="inv-num">#${num}</span>
-    <button class="btn btn-danger" onclick="removeBlock('${uid}')">Remove</button>
+    <button class="btn btn-danger" onclick="event.stopPropagation();removeBlock('${uid}')">Remove</button>
   </div>
   <div class="inv-body">
 
@@ -791,6 +849,14 @@ function becBlockHTML(uid, num) {
           <textarea class="form-textarea" data-f="tools" rows="3" placeholder="Microsoft Sentinel&#10;KQL&#10;Microsoft Graph API"></textarea>
         </div>
       </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
+      <div class="sub-label">Custom Sections <span class="form-hint" style="margin-left:6px;">optional — your own headings, e.g. MITRE ATT&amp;CK Mapping, References</span></div>
+      <div class="rep-rows" data-rep="custom"></div>
+      <button class="btn btn-add btn-sm" onclick="addCustomSection(this)">+ Add Custom Section</button>
     </div>
 
     <div class="form-divider"></div>
@@ -947,6 +1013,7 @@ function initMDEs(block, uid, type) {
         placeholder: el.placeholder || '',
         promptURLs: true,
       });
+      mdes[key].codemirror.on('change', markDirty);
     } catch (e) {
       // One broken field must never take down the whole block
       delete mdes[key];
@@ -988,7 +1055,12 @@ function addAlert(data) {
   const block = el.firstElementChild;
   document.getElementById('alerts-container').appendChild(block);
   initMDEs(block, uid, 'alert');
-  if (data) populateAlertBlock(block, data, uid);
+  if (data) {
+    populateAlertBlock(block, data, uid);
+    toggleBlock(uid, true); // loaded cases start collapsed — headers only
+  } else {
+    markDirty();
+  }
 }
 
 function addBEC(data) {
@@ -999,7 +1071,35 @@ function addBEC(data) {
   const block = el.firstElementChild;
   document.getElementById('bec-container').appendChild(block);
   initMDEs(block, uid, 'bec');
-  if (data) populateBECBlock(block, data, uid);
+  if (data) {
+    populateBECBlock(block, data, uid);
+    toggleBlock(uid, true);
+  } else {
+    markDirty();
+  }
+}
+
+/* Collapse / expand a case block. force: true = collapse, false = expand,
+   undefined = toggle. */
+function toggleBlock(uid, force) {
+  const block = document.querySelector(`[data-uid="${uid}"]`);
+  if (!block) return;
+  const body = block.querySelector('.inv-body');
+  const collapsed = body.classList.toggle('hidden', force);
+  const caret = block.querySelector('.inv-caret');
+  if (caret) caret.textContent = collapsed ? '▶' : '▼';
+  const sum = block.querySelector('.inv-summary');
+  if (collapsed) {
+    const id = val(f(block, 'id'));
+    const name = val(f(block, 'alertName')) || val(f(block, 'caseName'));
+    if (sum) sum.textContent = [id, name].filter(Boolean).join(' — ') || 'Untitled';
+  } else {
+    if (sum) sum.textContent = '';
+    // CodeMirror measures itself while hidden as zero-size — refresh on reveal
+    Object.keys(mdes).filter(k => k.startsWith(uid + ':')).forEach(k => {
+      try { mdes[k].codemirror.refresh(); } catch {}
+    });
+  }
 }
 
 // Counts deliberate deletions this session. Publishing fewer cases than
@@ -1016,6 +1116,7 @@ function removeBlock(uid) {
   destroyMDEs(uid);
   block.remove();
   removedCases++;
+  markDirty();
 }
 
 function addStep(btn, text) {
@@ -1023,6 +1124,7 @@ function addStep(btn, text) {
   const el = document.createElement('div');
   el.innerHTML = stepRowHTML(text ?? '');
   container.appendChild(el.firstElementChild);
+  markDirty();
 }
 
 function addBECTimelineRow(btn, time, activity, detail) {
@@ -1032,10 +1134,65 @@ function addBECTimelineRow(btn, time, activity, detail) {
   container.appendChild(el.firstElementChild);
 }
 
+/* ── CUSTOM SECTIONS ──
+   Member-defined headings with Markdown content, rendered after the fixed
+   sections on the live site. MDE instances are keyed under the block uid
+   ("uid:cs:N") so destroyMDEs / populateForm cleanup covers them. */
+let csCount = 0;
+
+function addCustomSection(btn, title, content) {
+  const block = btn.closest('.inv-block');
+  const uid = block.dataset.uid;
+  const key = `${uid}:cs:${Date.now()}${++csCount}`;
+  const container = btn.previousElementSibling;
+  const el = document.createElement('div');
+  el.innerHTML = `<div class="cs-row" data-cskey="${key}">
+    <div class="cs-row-head">
+      <input type="text" class="form-input" data-sub="cs-title" value="${esc(title ?? '')}" placeholder="Section title — e.g. MITRE ATT&amp;CK Mapping" />
+      <button class="btn btn-danger" onclick="removeCustomSection(this)">×</button>
+    </div>
+    <textarea class="form-textarea" data-sub="cs-content" rows="4" placeholder="Section content — Markdown supported"></textarea>
+  </div>`;
+  const row = el.firstElementChild;
+  container.appendChild(row);
+  const ta = row.querySelector('[data-sub="cs-content"]');
+  ta.value = content ?? '';
+  if (typeof EasyMDE !== 'undefined') {
+    try {
+      mdes[key] = new EasyMDE({
+        element: ta, toolbar: MDE_TOOLBAR, spellChecker: false, status: false,
+        autofocus: false, minHeight: '100px',
+        placeholder: 'Section content — Markdown supported', promptURLs: true,
+      });
+      if (content) mdes[key].value(content);
+      mdes[key].codemirror.on('change', markDirty);
+    } catch { delete mdes[key]; }
+  }
+}
+
+function removeCustomSection(btn) {
+  const row = btn.closest('.cs-row');
+  const key = row?.dataset.cskey;
+  if (key && mdes[key]) { try { mdes[key].toTextArea(); } catch {} delete mdes[key]; }
+  row?.remove();
+  markDirty();
+}
+
 /* ═══════════════════════════════════════════════════
    POPULATE FROM DATA
 ═══════════════════════════════════════════════════ */
 function f(block, field) { return block.querySelector(`[data-f="${field}"]`); }
+
+function collectCustomSections(block) {
+  const sections = [];
+  block.querySelectorAll('[data-rep="custom"] .cs-row').forEach(row => {
+    const title = val(row.querySelector('[data-sub="cs-title"]'));
+    const key = row.dataset.cskey;
+    const content = (mdes[key] ? mdes[key].value() : row.querySelector('[data-sub="cs-content"]')?.value ?? '').trim();
+    if (title || content) sections.push({ title, content });
+  });
+  return sections;
+}
 
 // Setting a <select> to a value with no matching option silently blanks it,
 // and the blank would then be collected as '' on publish — keep the default instead.
@@ -1071,6 +1228,9 @@ function populateAlertBlock(block, d, uid) {
 
   const stepBtn = block.querySelector('[data-rep="steps"] + button');
   arr(d.investigationSteps).forEach(s => addStep(stepBtn, s));
+
+  const csBtn = block.querySelector('[data-rep="custom"] + button');
+  arr(d.customSections).forEach(s => addCustomSection(csBtn, s?.title, s?.content));
 }
 
 function populateBECBlock(block, d, uid) {
@@ -1089,6 +1249,9 @@ function populateBECBlock(block, d, uid) {
 
   const tlBtn = block.querySelector('[data-rep="timeline"] + button');
   arr(d.timeline).forEach(e => addBECTimelineRow(tlBtn, e?.time, e?.activity, e?.detail ?? ''));
+
+  const csBtn = block.querySelector('[data-rep="custom"] + button');
+  arr(d.customSections).forEach(s => addCustomSection(csBtn, s?.title, s?.content));
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1130,6 +1293,7 @@ function collectData() {
       categorisation: get('categorisation'), escalation: get('escalation'),
       containment: mget('containment'), alertTuning: get('alertTuning'),
       lessonsLearned: mget('lessonsLearned'), tools,
+      customSections: collectCustomSections(block),
       verified: f(block, 'verified')?.checked ?? false,
     });
   });
@@ -1155,6 +1319,7 @@ function collectData() {
       initialAccess: mget('initialAccess'), unauthorisedActivity: mget('unauthorisedActivity'),
       dataAccess: mget('dataAccess'), lessonsLearned: mget('lessonsLearned'),
       tools, pdfUrl: get('pdfUrl'),
+      customSections: collectCustomSections(block),
       verified: f(block, 'verified')?.checked ?? false,
     });
   });
@@ -1279,6 +1444,7 @@ async function loadFromGitHub(silent = false) {
     populateForm(data);
     cleanState = JSON.stringify(collectData()); // this state already lives on GitHub
     clearDraft();
+    renderSaveStatus('clean');
     showNotif(
       silent ? '✓ Loaded from GitHub.' : '✓ Loaded your current portfolio from GitHub.',
       'success',
@@ -1403,6 +1569,7 @@ async function publishToGitHub() {
     if (res.ok) {
       clearDraft(); // published — the draft is no longer "unsaved work"
       cleanState = JSON.stringify(collectData());
+      renderSaveStatus('clean');
       showNotif(`✓ Published! Site rebuilds in ~60 s → github.com/${owner}/${repo}/actions`, 'success', 8000);
     } else {
       const err = await res.json().catch(() => ({}));
@@ -1450,6 +1617,15 @@ function loadJSON(input) {
 }
 
 function populateForm(d) {
+  populating = true;
+  try {
+    populateFormInner(d);
+  } finally {
+    populating = false;
+  }
+}
+
+function populateFormInner(d) {
   // Drop every existing EasyMDE instance before wiping the blocks,
   // otherwise the registry keeps dead editors around forever.
   Object.keys(mdes).forEach(k => {
@@ -1493,8 +1669,14 @@ let cleanState = null;
 function autosave() {
   try {
     const json = JSON.stringify(collectData());
-    if (json === cleanState) { clearDraft(); return; }
+    if (json === cleanState) {
+      clearDraft();
+      renderSaveStatus(cleanState !== null ? 'clean' : 'idle');
+      return;
+    }
     localStorage.setItem('socsim_draft', json);
+    const t = new Date();
+    renderSaveStatus('dirty', `draft saved ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);
   } catch {}
 }
 

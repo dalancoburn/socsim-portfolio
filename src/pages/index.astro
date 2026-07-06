@@ -4,6 +4,7 @@ import ProfileHeader from '../components/ProfileHeader.astro';
 import AlertCard from '../components/AlertCard.astro';
 import BECCard from '../components/BECCard.astro';
 import GettingStarted from '../components/GettingStarted.astro';
+import StatsStrip from '../components/StatsStrip.astro';
 import portfolio from '../data/portfolio.json';
 
 // Strip any trailing slash so we can always write `${base}/path` safely.
@@ -19,8 +20,16 @@ const pageTitle = isTemplate
 // yet (after a template upgrade adding new investigation types) get a graceful
 // empty section instead of a build error.
 const data = portfolio as Record<string, any>;
-const alerts = (data.alerts ?? []) as typeof portfolio.alerts;
-const bec    = (data.bec    ?? []) as typeof portfolio.bec;
+// Newest first. Dates are ISO (yyyy-mm-dd) so string comparison sorts
+// correctly; blank dates sink to the bottom.
+const byDateDesc = (key: string) => (a: Record<string, any>, b: Record<string, any>) =>
+  String(b[key] ?? '').localeCompare(String(a[key] ?? ''));
+
+const alerts = ([...(data.alerts ?? [])] as Record<string, any>[]).sort(byDateDesc('date'));
+const bec    = ([...(data.bec    ?? [])] as Record<string, any>[]).sort(
+  (a, b) => String(b.investigationDate || b.incidentDateFrom || '')
+    .localeCompare(String(a.investigationDate || a.incidentDateFrom || ''))
+);
 
 // Only link to a detail page when the case has an ID (a blank ID means
 // no detail route was generated). Encode so odd characters can't break the URL.
@@ -36,6 +45,8 @@ const detailUrl = (section: string, id: string | undefined) => {
   ) : (
     <>
       <ProfileHeader profile={portfolio.profile} />
+
+      <StatsStrip alerts={alerts} bec={bec} />
 
       <!-- Alert Investigations -->
       <div class="section-label">Alert Investigations</div>

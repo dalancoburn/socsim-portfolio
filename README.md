@@ -91,6 +91,7 @@ Manual alternative:
 | `alerts[].escalation` / `alertTuning` / `containment` | string | Recommended actions |
 | `alerts[].lessonsLearned` | string | Markdown ok |
 | `alerts[].tools[]` | string[] | Tool names |
+| `alerts[].customSections[]` | `{title, content}` | Optional member-defined sections (Markdown) |
 | `alerts[].verified` | boolean | `true` = SOCSIM lab verified |
 | `bec[].id` | string | Unique, URL-safe — e.g. `BEC-001` |
 | `bec[].caseName` / `caseReference` | string | Title + WDLabs reference |
@@ -102,6 +103,7 @@ Manual alternative:
 | `bec[].lessonsLearned` | string | Markdown ok |
 | `bec[].tools[]` | string[] | Tool names |
 | `bec[].pdfUrl` | string | Optional hosted PDF report |
+| `bec[].customSections[]` | `{title, content}` | Optional member-defined sections (Markdown) |
 | `bec[].verified` | boolean | `true` = SOCSIM lab verified |
 
 ---

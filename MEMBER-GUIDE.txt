@@ -138,6 +138,8 @@ ALERT INVESTIGATION FIELDS
   Alert Tuning       Does the detection rule need adjusting?
   Lessons Learned    What you would do differently next time.
   Tools Used         One tool per line (e.g. Microsoft Sentinel, KQL, etc.)
+  Custom Sections    Optional. Add your own headings — e.g. "MITRE ATT&CK
+                     Mapping" or "References" — with Markdown content.
   SOCSIM Verified    Tick this if the investigation was done in the live lab.
 
 
@@ -162,6 +164,7 @@ BEC CASE DROP FIELDS
   Data Access         What data was accessed or exfiltrated?
   Lessons Learned     What you would approach differently.
   Tools Used          One tool per line.
+  Custom Sections     Optional. Add your own headings with Markdown content.
   SOCSIM Verified     Tick this if done in the live lab.
 
 

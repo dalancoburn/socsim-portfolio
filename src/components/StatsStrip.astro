@@ -1,0 +1,36 @@
+---
+// Auto-computed portfolio stats — zero member input required.
+// Renders nothing until there is at least one case.
+
+interface Props {
+  alerts: Record<string, any>[];
+  bec: Record<string, any>[];
+}
+
+const { alerts, bec } = Astro.props;
+
+const all = [...alerts, ...bec];
+const verified = all.filter((c) => c.verified).length;
+const tools = new Set(
+  all.flatMap((c) => (Array.isArray(c.tools) ? c.tools : []))
+     .map((t: string) => String(t).trim().toLowerCase())
+     .filter(Boolean)
+);
+
+const stats = [
+  { num: alerts.length, label: 'Alert Investigations' },
+  { num: bec.length,    label: 'BEC Case Drops' },
+  { num: verified,      label: 'Lab-Verified' },
+  { num: tools.size,    label: 'Tools Used' },
+];
+---
+{all.length > 0 && (
+  <div class="stats-strip">
+    {stats.map((s) => (
+      <div class="stat">
+        <span class="stat-num">{s.num}</span>
+        <span class="stat-label">{s.label}</span>
+      </div>
+    ))}
+  </div>
+)}

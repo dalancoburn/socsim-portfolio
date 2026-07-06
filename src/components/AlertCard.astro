@@ -25,6 +25,7 @@ interface Alert {
   alertTuning: string;
   lessonsLearned: string;
   tools: string[];
+  customSections?: { title: string; content: string }[];
   verified: boolean;
 }
 
@@ -75,6 +76,7 @@ const dateLabel = fmtDate(alert.date);
 // Tolerate hand-edited portfolio.json where arrays were removed
 const steps = alert.investigationSteps ?? [];
 const tools = alert.tools ?? [];
+const customSections = (alert.customSections ?? []).filter((s) => s?.title || s?.content);
 ---
 
 <article class:list={['case-card', compact && 'card-compact']}>
@@ -230,6 +232,14 @@ const tools = alert.tools ?? [];
           <div class="case-section-content md-content" set:html={md(alert.lessonsLearned)} />
         </div>
       )}
+
+      <!-- Member-defined custom sections -->
+      {customSections.map((s) => (
+        <div class="case-section">
+          {s.title && <div class="case-section-label">{s.title}</div>}
+          <div class="case-section-content md-content" set:html={md(s.content)} />
+        </div>
+      ))}
 
       <!-- Tools -->
       {tools.length > 0 && (
