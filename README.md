@@ -51,6 +51,9 @@ That's it. No JSON editing, no file downloads, no command line.
 
 ## Adding screenshots to write-ups
 
+Click into a write-up field, hit the **camera icon (📷)** in its toolbar, and pick your image — the editor uploads it to your repo and inserts it automatically (requires your saved GitHub settings).
+
+Manual alternative:
 1. In your GitHub repo, navigate to `src/assets/` (create the folder if it doesn't exist)
 2. Upload your screenshot file via drag-and-drop → commit
 3. Click the file → click **Raw** → copy the URL

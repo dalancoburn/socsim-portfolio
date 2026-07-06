@@ -3,6 +3,7 @@ import type { GetStaticPaths } from 'astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AlertCard from '../../components/AlertCard.astro';
 import portfolio from '../../data/portfolio.json';
+import { mdToText } from '../../utils/md';
 
 export const getStaticPaths = (() => {
   // Skip blank IDs and dedupe (first occurrence wins) so a member's
@@ -24,8 +25,11 @@ export const getStaticPaths = (() => {
 const { alert } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 const pageTitle = `${alert.id} — ${alert.alertName} — ${portfolio.profile.name}`;
+const pageDescription = mdToText(alert.whatHappened)
+  || [alert.severity && `${alert.severity} severity`, alert.verdict, `investigated by ${portfolio.profile.name}`]
+       .filter(Boolean).join(' · ');
 ---
-<BaseLayout title={pageTitle}>
+<BaseLayout title={pageTitle} description={pageDescription}>
   <div style="margin-bottom:32px;">
     <a
       href={base}

@@ -3,6 +3,7 @@ import type { GetStaticPaths } from 'astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import BECCard from '../../components/BECCard.astro';
 import portfolio from '../../data/portfolio.json';
+import { mdToText } from '../../utils/md';
 
 export const getStaticPaths = (() => {
   // Skip blank IDs and dedupe (first occurrence wins) so a member's
@@ -24,8 +25,10 @@ export const getStaticPaths = (() => {
 const { bec } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 const pageTitle = `${bec.id} — ${bec.caseName} — ${portfolio.profile.name}`;
+const pageDescription = mdToText(bec.attackNarrative)
+  || `BEC investigation by ${portfolio.profile.name}.`;
 ---
-<BaseLayout title={pageTitle}>
+<BaseLayout title={pageTitle} description={pageDescription}>
   <div style="margin-bottom:32px;">
     <a
       href={base}

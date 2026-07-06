@@ -4,10 +4,37 @@ import portfolio from '../data/portfolio.json';
 
 interface Props {
   title: string;
+  /** Plain-text page description for search engines and social preview cards. */
+  description?: string;
 }
 
-const { title } = Astro.props;
+const { title, description } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+
+// ── SOCIAL / SEO META ───────────────────────────────────────
+// Default description is auto-computed from the portfolio so shared links
+// (especially on LinkedIn) get a meaningful preview without member effort.
+const isTemplate = !portfolio.profile.name || portfolio.profile.name.startsWith('[');
+const data = portfolio as Record<string, any>;
+const nAlerts   = (data.alerts ?? []).length;
+const nBec      = (data.bec ?? []).length;
+const nVerified = [...(data.alerts ?? []), ...(data.bec ?? [])].filter((c: any) => c.verified).length;
+
+const defaultDescription = isTemplate
+  ? 'A SOCSIM member portfolio — documented alert investigations and BEC case drops from The SOC Simulation Project lab.'
+  : [
+      `${portfolio.profile.name}${portfolio.profile.role ? ' · ' + portfolio.profile.role : ''}.`,
+      `${nAlerts} alert investigation${nAlerts === 1 ? '' : 's'} · ${nBec} BEC case drop${nBec === 1 ? '' : 's'}` +
+        (nVerified ? ` · ${nVerified} SOCSIM lab-verified` : '') + '.',
+    ].join(' ');
+
+const metaDescription = description ?? defaultDescription;
+
+// Absolute URLs for og: tags. Astro.site comes from SITE_URL in the deploy
+// workflow; the fallback only matters for local dev where cards aren't used.
+const site = Astro.site ?? new URL('https://example.github.io');
+const pageUrl = new URL(Astro.url.pathname, site);
+const ogImage = new URL(`${base === '/' ? '' : base}/og-card.png`, site);
 
 // ── THEME SYSTEM ────────────────────────────────────────────
 // Each theme is a complete set of CSS custom property overrides,
@@ -158,6 +185,20 @@ const inlineStyle = Object.entries(themeVars).map(([k, v]) => `${k}:${v}`).join(
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{title}</title>
+  <meta name="description" content={metaDescription} />
+  <link rel="canonical" href={pageUrl} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="SOCSIM Member Portfolio" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={metaDescription} />
+  <meta property="og:url" content={pageUrl} />
+  <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={metaDescription} />
+  <meta name="twitter:image" content={ogImage} />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link

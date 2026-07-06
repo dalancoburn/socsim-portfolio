@@ -193,8 +193,19 @@ Useful shortcuts you can type directly:
 SECTION 5 — ADDING SCREENSHOTS
 ────────────────────────────────────────────────────────────
 
-Screenshots make your write-ups much more compelling. Here is
-how to add them:
+Screenshots make your write-ups much more compelling.
+
+EASIEST WAY — the camera button (recommended)
+  1. Click into the write-up field where you want the screenshot.
+  2. Click the camera icon (📷) in the toolbar above the field.
+  3. Pick your image file (.png / .jpg, up to 10 MB).
+  4. Done — the editor uploads it to your repo and inserts it
+     into your write-up automatically.
+
+  (This needs your GitHub settings saved — the same one-time
+  setup you did in Section 1.)
+
+MANUAL WAY — if you prefer doing it yourself
 
   1. Take your screenshot and save it as a .png or .jpg file.
 
@@ -218,9 +229,6 @@ how to add them:
      ![Description of what the screenshot shows](paste-url-here)
 
 The screenshot will appear in your published portfolio.
-
-TIP: Use the camera icon (📷) in the editor toolbar for a
-step-by-step reminder of this process.
 
 
 ────────────────────────────────────────────────────────────

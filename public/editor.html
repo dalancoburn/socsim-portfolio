@@ -235,6 +235,7 @@
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('file-input').click()" title="Load a portfolio.json file from your computer">↑ Load file</button>
     <button class="btn btn-ghost btn-sm" onclick="downloadJSON()" title="Download a portfolio.json backup of everything currently in the form">↓ Backup</button>
     <input type="file" id="file-input" accept=".json,application/json" onchange="loadJSON(this)" />
+    <input type="file" id="img-input" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none;" onchange="uploadScreenshot(this)" />
     <button class="btn btn-sm" onclick="updateFromTemplate()" title="Pull the latest components, styles and editor from the SOCSIM template. Your portfolio data is never touched.">↻ Update template</button>
     <button class="btn btn-primary btn-sm" onclick="publishToGitHub()">⬆ Publish to GitHub</button>
   </div>
@@ -844,18 +845,79 @@ const mdes = {};
 const ALERT_MDE_FIELDS = ['whyTriggered','whatHappened','evidence','verdictJustification','containment','lessonsLearned'];
 const BEC_MDE_FIELDS   = ['attackNarrative','initialAccess','unauthorisedActivity','dataAccess','lessonsLearned'];
 
+// The camera button uploads straight to the member's repo when GitHub
+// settings are saved; otherwise it falls back to the manual how-to modal.
+let activeUploadMDE = null;
+
 const MDE_TOOLBAR = [
   'bold','italic','|',
   'unordered-list','ordered-list','|',
   'code','|',
   {
-    name:'screenshot', title:'Insert Screenshot',
+    name:'screenshot', title:'Upload Screenshot',
     className:'fa fa-camera',
-    action: () => document.getElementById('screenshot-help').classList.add('open'),
+    action: (editor) => {
+      activeUploadMDE = editor;
+      const connected = !!(localStorage.getItem('gh_owner')?.trim() &&
+                           localStorage.getItem('gh_repo')?.trim() &&
+                           localStorage.getItem('gh_token')?.trim());
+      if (connected) document.getElementById('img-input').click();
+      else document.getElementById('screenshot-help').classList.add('open');
+    },
   },
   'image','link','|',
   'preview',
 ];
+
+async function uploadScreenshot(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file || !activeUploadMDE) return;
+
+  const owner = localStorage.getItem('gh_owner')?.trim();
+  const repo  = localStorage.getItem('gh_repo')?.trim();
+  const token = localStorage.getItem('gh_token')?.trim();
+  if (!owner || !repo || !token) {
+    document.getElementById('screenshot-help').classList.add('open');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showNotif('✗ Image is larger than 10 MB — compress the screenshot and try again.', 'error', 8000);
+    return;
+  }
+
+  showNotif('Uploading screenshot…', 'success', 60000);
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1]);
+      r.onerror = () => reject(new Error('Could not read the image file'));
+      r.readAsDataURL(file);
+    });
+
+    // Timestamp prefix keeps every upload path unique — no collisions, no sha juggling
+    const safe = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-+|-+$/g, '') || 'screenshot.png';
+    const path = `src/assets/${Date.now()}-${safe}`;
+
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: `Add screenshot ${safe} via SOCSIM editor`, content: base64 }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showNotif(`✗ Upload failed: ${ghErrorHint(res.status, err.message)}`, 'error', 9000);
+      return;
+    }
+
+    const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+    const alt = safe.replace(/\.[a-z0-9]+$/, '').replace(/[-_]+/g, ' ').trim() || 'screenshot';
+    activeUploadMDE.codemirror.replaceSelection(`![${alt}](${rawUrl})`);
+    showNotif('✓ Screenshot uploaded and inserted.', 'success', 5000);
+  } catch (e) {
+    showNotif(`✗ Upload failed: ${e.message}`, 'error', 8000);
+  }
+}
 
 let mdeWarned = false;
 
@@ -1498,6 +1560,11 @@ window.addEventListener('load', async function () {
 <div class="screenshot-help" id="screenshot-help" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="screenshot-help-box">
     <h3>Adding Screenshots</h3>
+    <p style="color:#888;font-size:.85rem;line-height:1.7;margin-bottom:14px;">
+      <strong style="color:#e8e8e8;">Easiest way:</strong> save your GitHub settings
+      (⚙ at the top of the page) — then the 📷 button uploads screenshots straight
+      into your write-up automatically. Manual method:
+    </p>
     <ol>
       <li><strong>Upload the image to your GitHub repo</strong><br>
         Go to your repo on GitHub → navigate to <code>src/assets/</code> (create it if needed) → drag-and-drop your screenshot → commit.
