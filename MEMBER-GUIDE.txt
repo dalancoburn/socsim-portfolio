@@ -32,8 +32,7 @@ STEP 2 — Enable GitHub Pages
   2. In the left sidebar, click "Pages"
   3. Under "Build and deployment":
      - Source: GitHub Actions
-  4. Click Save
-  5. Wait about 60 seconds, then your site will be live at:
+  4. Wait about 60 seconds, then your site will be live at:
      https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/
 
 
@@ -55,12 +54,13 @@ STEP 4 — Open your editor and connect it to your repo
   1. Go to: https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html
   2. Click the "⚙ GitHub Settings" panel at the top
   3. Fill in:
-       GitHub Username:   your GitHub username
-       Repository Name:   your repo name (e.g. socsim-portfolio)
+       GitHub Username:       your GitHub username
+       Repository Name:       your repo name (e.g. socsim-portfolio)
        Personal Access Token: paste the token from Step 3
   4. Click "Save settings"
   5. Click "⬇ Load from GitHub" to pull in your current data
-  6. You are now connected — this editor is yours.
+
+  You're now connected — every button below needs this done first.
 
 
 ────────────────────────────────────────────────────────────
@@ -95,87 +95,118 @@ SECTION 3 — ADDING INVESTIGATIONS
 ────────────────────────────────────────────────────────────
 
 Every time you complete an investigation in the SOCSIM lab,
-add it to your portfolio. Here is the process:
+add it to your portfolio:
 
-  1. Open your editor:
-     https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html
-
+  1. Open your editor.
   2. Click "⬇ Load from GitHub"
      This loads all your existing investigations so you do not
      overwrite anything.
-
   3. Scroll down to the relevant section:
      — Alert Investigations  →  click "+ Add Alert Investigation"
      — BEC Case Drops        →  click "+ Add BEC Case Drop"
-
-  4. Fill in the fields (see below for what each one means)
-
+  4. Fill in the fields (see below — same order as the form).
   5. Click "⬆ Publish to GitHub"
      Your site updates in about 60 seconds.
 
-
-ALERT INVESTIGATION FIELDS
-  Case ID            A unique code for this investigation.
-                     Suggested format: ALT-001, ALT-002, etc.
-  Alert Name         The name of the alert as it appeared in the tool.
-  Alert ID           Optional. The alert ID or link from Sentinel/MDE.
-  Date               When you investigated it.
-  Severity           Critical / High / Medium / Low
-  Host / Account     The affected machine or user account.
-  Date & Time        When the alert fired (include timezone, e.g. UTC).
-  What triggered it  Which rule or detection fired, and why.
-  Why it triggered   The detection logic behind the rule.
-  What happened      Your narrative of the incident.
-  Evidence           Artefacts, log entries, process trees, decoded output.
-  Was it successful  Did the attack succeed? Yes / No / Unknown
-  Verdict            Malicious / Non-malicious / Suspicious
-  Verdict reason     Why you reached that verdict.
-  Investigation steps A numbered walkthrough of what you did.
-  KQL Queries        Paste any queries you used (raw KQL, line breaks ok).
-  Categorisation     True Positive / Benign True Positive / False Positive
-  Escalation         Urgent / Non-urgent / None
-  Containment        What actions were taken or recommended.
-  Alert Tuning       Does the detection rule need adjusting?
-  Lessons Learned    What you would do differently next time.
-  Tools Used         One tool per line (e.g. Microsoft Sentinel, KQL, etc.)
-  Custom Sections    Optional. Add your own headings — e.g. "MITRE ATT&CK
-                     Mapping" or "References" — with Markdown content.
-  SOCSIM Verified    Tick this if the investigation was done in the live lab.
+Note: each case's Case ID may only contain letters, numbers,
+dots, dashes and underscores (it becomes part of a URL). The
+editor blocks publishing if a Case ID breaks this rule.
 
 
-BEC CASE DROP FIELDS
-  Case ID             A unique code. Suggested format: BEC-001, BEC-002, etc.
-  Case Name           Descriptive title for the case.
-  Case Reference      The WDLabs reference number if provided.
-  Affected Account    The compromised email account.
-  Incident Dates      When the incident started and ended.
-  Investigation Date  When you investigated it.
-  PDF Report URL      Optional. If you have a PDF version of your report,
-                      upload it to your repo (see screenshots guide below)
-                      and paste the URL here.
-  Attack Narrative    Plain English summary of what happened. Write this
-                      last, as if explaining to a non-technical manager.
-  Timeline            Chronological record of activity. Each entry has:
-                        Time      e.g. 02:14 UTC
-                        Activity  Short label (e.g. "Threat actor signs in")
-                        Detail    Longer description of what happened.
-  Initial Access      How did the threat actor get in?
-  Unauthorised Activity  What did they do once inside?
-  Data Access         What data was accessed or exfiltrated?
-  Lessons Learned     What you would approach differently.
-  Tools Used          One tool per line.
-  Custom Sections     Optional. Add your own headings with Markdown content.
-  SOCSIM Verified     Tick this if done in the live lab.
+ALERT INVESTIGATION FIELDS — grouped exactly as the form shows them
+
+  Case details
+    Case ID              Unique code. Suggested format: ALT-001, ALT-002…
+    Date Investigated    When you investigated it.
+    Severity              Critical / High / Medium / Low
+    Alert ID              Optional. The alert ID or link from Sentinel/MDE.
+    Alert Name            The name of the alert as it appeared in the tool.
+    Host / Account Affected   The affected machine or user account.
+    Date & Time of Alert  When the alert fired (include timezone, e.g. UTC).
+
+  Alert Summary
+    What triggered the alert   Which rule or detection fired, and on what.
+    Why it triggered            The detection logic behind the rule.
+
+  Investigation Findings
+    What happened          Your narrative of the incident.
+    Evidence                Artefacts, log entries, process trees, decoded output.
+    Was the activity successful?   Did the attack succeed? Yes / No / Unknown
+    Verdict                  Malicious / Non-malicious / Suspicious
+    Categorisation          True Positive / Benign True Positive / False Positive
+    Verdict Justification   Why you reached that verdict and categorisation.
+
+  Investigation Steps
+    A numbered walkthrough of what you did — click "+ Add Step" per line.
+
+  KQL Queries Used
+    Paste any queries you used (raw KQL, line breaks preserved).
+
+  Recommended Actions
+    Escalation             Urgent / Non-urgent / None
+    Alert Tuning           Does the detection rule need adjusting?
+    Containment / Next Steps   What actions were taken or recommended.
+
+  Lessons Learned & Tools
+    Lessons Learned   What you would do differently next time.
+    Tools Used         One tool per line (e.g. Microsoft Defender for Endpoint).
+
+  Custom Sections
+    Optional. Add your own headings — e.g. "MITRE ATT&CK Mapping" or
+    "References" — with Markdown content.
+
+  SOCSIM Verified
+    Tick this if the investigation was done in the live lab.
+
+
+BEC CASE DROP FIELDS — grouped exactly as the form shows them
+
+  Case details
+    Case ID             Unique code. Suggested format: BEC-001, BEC-002…
+    Case Reference       The WDLabs reference number, if provided.
+    Incident From / To   When the incident started and ended.
+    Case Name             Descriptive title for the case.
+    Affected Account     The compromised email account.
+    Investigation Date   When you investigated it.
+    PDF Report URL        Optional. If you have a PDF version of your report,
+                          upload it to your repo (see Section 5) and paste
+                          the URL here.
+
+  Attack Narrative
+    Plain-English summary of what happened. Write this last, as if
+    explaining to a non-technical manager.
+
+  Timeline of Events (UTC throughout)
+    Each entry has:
+      Time      e.g. 02:14 UTC
+      Activity  Short label (e.g. "Threat actor signs in")
+      Detail    Longer description of what happened.
+
+  Findings
+    3.1 — Initial Access          How did the threat actor get in?
+    3.2 — Unauthorised Activity   What did they do once inside?
+    3.3 — Data Access             What data was accessed or exfiltrated?
+
+  Lessons Learned & Tools
+    Lessons Learned   What you would approach differently.
+    Tools Used         One tool per line.
+
+  Custom Sections
+    Optional. Add your own headings with Markdown content.
+
+  SOCSIM Verified
+    Tick this if done in the live lab.
 
 
 ────────────────────────────────────────────────────────────
 SECTION 4 — FORMATTING YOUR WRITE-UPS
 ────────────────────────────────────────────────────────────
 
-All the main narrative fields (What Happened, Evidence, Attack
-Narrative, Findings, Lessons Learned, etc.) support Markdown.
-You do not need to know Markdown — just use the toolbar above
-each field.
+All the main narrative fields (Why it triggered, What Happened,
+Evidence, Verdict Justification, Containment, Lessons Learned,
+Attack Narrative, Initial Access, Unauthorised Activity, Data
+Access) support Markdown via a toolbar — you do not need to know
+Markdown syntax.
 
 Toolbar buttons:
   B         Bold text
@@ -183,6 +214,9 @@ Toolbar buttons:
   ≡         Bullet list
   1.        Numbered list
   < >       Inline code (good for command names, IPs, filenames)
+  📷        Upload screenshot (see Section 5)
+  Image     Insert an image from a URL
+  Link      Insert a hyperlink
   Eye       Preview — see how it will look on your portfolio
 
 Useful shortcuts you can type directly:
@@ -235,14 +269,31 @@ The screenshot will appear in your published portfolio.
 
 
 ────────────────────────────────────────────────────────────
-SECTION 6 — UPDATING YOUR PORTFOLIO
+SECTION 6 — BACKING UP YOUR WORK
+────────────────────────────────────────────────────────────
+
+Two buttons at the top of the editor protect your work:
+
+  ↓ Backup       Downloads a portfolio.json file with everything
+                 currently in the form. Keep this somewhere safe
+                 before making big changes.
+  ↑ Load file    Loads a portfolio.json file from your computer
+                 back into the editor (e.g. to restore a backup).
+
+Neither of these touches GitHub — they only move data between
+the editor and your computer.
+
+
+────────────────────────────────────────────────────────────
+SECTION 7 — UPDATING YOUR PORTFOLIO SITE
 ────────────────────────────────────────────────────────────
 
 Every time the SOCSIM template is updated with new investigation
 types, improved styling, or new features, you can pull those
 updates in without touching your data.
 
-  1. Open your editor.
+  1. Open your editor and make sure your GitHub Settings are
+     saved (Section 1, Step 4) — the update button needs this.
   2. Click "↻ Update template" in the header.
   3. Confirm the dialog — your investigations are safe.
   4. The update runs automatically in the background.
@@ -253,7 +304,7 @@ is NEVER touched by the update. Only the site code changes.
 
 
 ────────────────────────────────────────────────────────────
-SECTION 7 — QUICK REFERENCE
+SECTION 8 — QUICK REFERENCE
 ────────────────────────────────────────────────────────────
 
 Your portfolio URL:
