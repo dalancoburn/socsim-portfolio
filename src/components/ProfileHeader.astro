@@ -27,6 +27,19 @@ const initials = (profile.name ?? '')
   .slice(0, 2)
   .join('')
   .toUpperCase() || '◈';
+
+// Members sometimes paste profile URLs without a protocol (e.g.
+// "www.linkedin.com/in/…"). Used as a raw href that resolves as a path
+// relative to the current page instead of an external link, so add
+// https:// when one isn't already present.
+const toAbsoluteUrl = (url?: string) => {
+  const trimmed = (url ?? '').trim();
+  if (!trimmed) return '';
+  return /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
+const linkedinUrl = toAbsoluteUrl(profile.links.linkedin);
+const githubUrl = toAbsoluteUrl(profile.links.github);
 ---
 <header class="profile-header">
   <div class="profile-avatar">
@@ -44,11 +57,11 @@ const initials = (profile.name ?? '')
       <div class="profile-location">&#9632; {profile.location}</div>
     )}
     <nav class="profile-links">
-      {profile.links.linkedin && (
-        <a href={profile.links.linkedin} class="profile-link" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      {linkedinUrl && (
+        <a href={linkedinUrl} class="profile-link" target="_blank" rel="noopener noreferrer">LinkedIn</a>
       )}
-      {profile.links.github && (
-        <a href={profile.links.github} class="profile-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+      {githubUrl && (
+        <a href={githubUrl} class="profile-link" target="_blank" rel="noopener noreferrer">GitHub</a>
       )}
       {profile.links.email && (
         <a href={`mailto:${profile.links.email}`} class="profile-link">Email</a>

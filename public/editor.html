@@ -433,6 +433,13 @@
 ═══════════════════════════════════════════════════ */
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const val = el => (el?.value??'').trim();
+// Profile links (LinkedIn/GitHub) render as a raw <a href>, so a value typed
+// without a protocol (e.g. "www.linkedin.com/in/…") resolves as a path
+// relative to the site instead of an external link. Add https:// when missing.
+const urlVal = el => {
+  const v = val(el);
+  return v && !/^[a-z][a-z0-9+.-]*:/i.test(v) ? `https://${v}` : v;
+};
 const arr = v => Array.isArray(v) ? v : []; // tolerate hand-edited JSON
 let alertCount = 0, becCount = 0;
 
@@ -1266,8 +1273,8 @@ function collectData() {
     photo:    val(document.getElementById('p-photo')),
     theme:    document.getElementById('p-theme').value || 'operator',
     links: {
-      linkedin: val(document.getElementById('p-linkedin')),
-      github:   val(document.getElementById('p-github')),
+      linkedin: urlVal(document.getElementById('p-linkedin')),
+      github:   urlVal(document.getElementById('p-github')),
       email:    val(document.getElementById('p-email')),
     },
   };
