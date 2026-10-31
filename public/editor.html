@@ -7,7 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" />
+  <!-- EasyMDE pinned to an exact version + SRI hash: the browser refuses the file if the CDN ever serves anything else -->
+  <!-- Schema migration: the exact code the site build uses (src/utils/migrate.js, served at /migrate.js) -->
+  <script type="module">
+    import { migratePortfolio, countEntries, SCHEMA_VERSION } from './migrate.js';
+    window.SOCSIM_SCHEMA = { migratePortfolio, countEntries, SCHEMA_VERSION };
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.css" integrity="sha384-ZoLYv3S+AsZX+zhbN1D1+WPpc8f+DmLfxfgw+qn0Nq8wJPOYQQXEW5ZrRhcGozlG" crossorigin="anonymous" />
   <style>
   /* ── EasyMDE dark theme ── */
   .EasyMDEContainer { width: 100%; }
@@ -162,7 +168,7 @@
     .inv-summary{flex:1;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .inv-body.hidden{display:none}
     .inv-type-badge{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:3px}
-    .badge-alert{color:var(--accent);background:rgba(240,122,34,.1);border:1px solid rgba(240,122,34,.3)}
+    .badge-inv{color:var(--accent);background:rgba(240,122,34,.1);border:1px solid rgba(240,122,34,.3)}
     .badge-bec{color:var(--yellow);background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.25)}
     .inv-num{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--dimmer)}
     .inv-body{padding:20px}
@@ -175,6 +181,9 @@
     .rep-row.tl-row{grid-template-columns:130px 1fr 1fr auto}
     .rep-row.bec-tl-row{grid-template-columns:130px 1fr 1fr auto}
     .rep-row.step-row{grid-template-columns:1fr auto}
+    .rep-row.inv-tl-row{grid-template-columns:150px 1fr auto}
+    .rep-row.inv-tl-row .rep-cell-wide{grid-column:1 / -1}
+    .rep-row.asset-row{grid-template-columns:1fr 2fr auto}
     .rep-cell{display:flex;flex-direction:column;gap:3px}
     .rep-cell-label{font-family:'JetBrains Mono',monospace;font-size:.54rem;color:var(--dimmer);letter-spacing:.1em;text-transform:uppercase}
     .rep-remove{align-self:flex-end;padding-bottom:1px}
@@ -229,7 +238,7 @@
       .ed-header{padding:12px 16px}.ed-body{padding:20px 14px 90px}
       .form-row,.form-row.three,.form-row.four{grid-template-columns:1fr}
       .gh-fields{grid-template-columns:1fr}
-      .rep-row.tl-row,.rep-row.bec-tl-row{grid-template-columns:1fr}
+      .rep-row.tl-row,.rep-row.bec-tl-row,.rep-row.inv-tl-row,.rep-row.asset-row{grid-template-columns:1fr}
       .action-bar{padding:12px 16px;flex-wrap:wrap}
     }
   </style>
@@ -400,12 +409,12 @@
     </div>
   </div>
 
-  <!-- ALERT INVESTIGATIONS -->
+  <!-- INVESTIGATIONS -->
   <div class="ed-section">
-    <div class="ed-section-title">Alert Investigations</div>
-    <div class="ed-section-sub">One entry per completed alert triage in the SOCSIM lab</div>
-    <div class="inv-container" id="alerts-container"></div>
-    <button class="btn btn-add" style="margin-top:14px;width:100%;justify-content:center;" onclick="addAlert()">+ Add Alert Investigation</button>
+    <div class="ed-section-title">Investigations</div>
+    <div class="ed-section-sub">One entry per investigation in the SOCSIM lab — a single alert, a Defender incident, or anything you dug into</div>
+    <div class="inv-container" id="investigations-container"></div>
+    <button class="btn btn-add" style="margin-top:14px;width:100%;justify-content:center;" onclick="addInvestigation()">+ Add Investigation</button>
   </div>
 
   <!-- BEC CASE DROPS -->
@@ -441,7 +450,16 @@ const urlVal = el => {
   return v && !/^[a-z][a-z0-9+.-]*:/i.test(v) ? `https://${v}` : v;
 };
 const arr = v => Array.isArray(v) ? v : []; // tolerate hand-edited JSON
-let alertCount = 0, becCount = 0;
+
+/* The schema migration (./migrate.js) is what turns older portfolios into the
+   current format. If it failed to load, the editor must not load, autosave or
+   publish anything — doing so could drop entries it doesn't understand. */
+function schemaReady() {
+  if (window.SOCSIM_SCHEMA) return true;
+  showNotif('✗ The editor could not load a required file (migrate.js), so it has stopped to protect your portfolio. Reload the page in a minute — if your site was just updated, it may still be deploying.', 'error', 20000);
+  return false;
+}
+let invCount = 0, becCount = 0;
 
 function selectTheme(name) {
   // Unknown theme name (hand-edited JSON) → fall back to the default
@@ -525,7 +543,7 @@ function saveGHSettings() {
   // If the form is still empty, pull the member's existing portfolio right
   // away so they never start typing into a blank editor by mistake.
   const cur = collectData();
-  if (!cur.profile.name && !cur.alerts.length && !cur.bec.length) {
+  if (!cur.profile.name && !cur.investigations.length && !cur.bec.length) {
     showNotif('GitHub settings saved — loading your portfolio…');
     loadFromGitHub();
   } else {
@@ -550,13 +568,16 @@ function updateGHStatus() {
 }
 
 /* ═══════════════════════════════════════════════════
-   ALERT BLOCK TEMPLATE
+   INVESTIGATION BLOCK TEMPLATE
+   Sections follow the order an analyst works in. Only the header fields
+   are structured — everything else is free-form Markdown, and empty
+   sections are hidden on the live site.
 ═══════════════════════════════════════════════════ */
-function alertBlockHTML(uid, num) {
-  return `<div class="inv-block" data-uid="${uid}" data-type="alert">
+function invBlockHTML(uid, num) {
+  return `<div class="inv-block" data-uid="${uid}" data-type="investigation">
   <div class="inv-block-header" onclick="toggleBlock('${uid}')" title="Click to collapse / expand">
     <span class="inv-caret">▼</span>
-    <span class="inv-type-badge badge-alert">Alert</span>
+    <span class="inv-type-badge badge-inv">Investigation</span>
     <span class="inv-summary"></span>
     <span class="inv-num">#${num}</span>
     <button class="btn btn-danger" onclick="event.stopPropagation();removeBlock('${uid}')">Remove</button>
@@ -567,7 +588,7 @@ function alertBlockHTML(uid, num) {
       <div class="form-row four">
         <div class="form-field">
           <label class="form-label">Case ID</label>
-          <input type="text" class="form-input" data-f="id" placeholder="ALT-001" />
+          <input type="text" class="form-input" data-f="id" placeholder="INV-001" />
         </div>
         <div class="form-field">
           <label class="form-label">Date Investigated</label>
@@ -580,77 +601,7 @@ function alertBlockHTML(uid, num) {
           </select>
         </div>
         <div class="form-field">
-          <label class="form-label">Alert ID <span class="form-hint">optional</span></label>
-          <input type="text" class="form-input" data-f="alertId" placeholder="MDE-ALERT-…" />
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-field">
-          <label class="form-label">Alert Name</label>
-          <input type="text" class="form-input" data-f="alertName" placeholder="e.g. Suspicious Encoded PowerShell Command" />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label class="form-label">Host / Account Affected</label>
-          <input type="text" class="form-input" data-f="hostOrAccount" placeholder="HOSTNAME / user@domain.com" />
-        </div>
-        <div class="form-field">
-          <label class="form-label">Date & Time of Alert</label>
-          <input type="text" class="form-input" data-f="dateTime" placeholder="14 Nov 2024 09:47 UTC" />
-        </div>
-      </div>
-    </div>
-
-    <div class="form-divider"></div>
-
-    <div class="inv-sub">
-      <div class="sub-label">Alert Summary</div>
-      <div class="form-row full">
-        <div class="form-field">
-          <label class="form-label">What triggered the alert</label>
-          <textarea class="form-textarea" data-f="whatTriggered" rows="2" placeholder="Which rule fired, on which process/activity."></textarea>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-field">
-          <label class="form-label">Why it triggered <span class="form-hint">the detection logic</span></label>
-          <textarea class="form-textarea" data-f="whyTriggered" rows="2" placeholder="The detection rule / logic that caused the alert to fire."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-divider"></div>
-
-    <div class="inv-sub">
-      <div class="sub-label">Investigation Findings</div>
-      <div class="form-row full">
-        <div class="form-field">
-          <label class="form-label">What happened</label>
-          <textarea class="form-textarea" data-f="whatHappened" rows="4" placeholder="Walk through what actually occurred — the attack or activity in plain terms."></textarea>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-field">
-          <label class="form-label">Evidence <span class="form-hint">artefacts, log entries, indicators</span></label>
-          <textarea class="form-textarea" data-f="evidence" rows="4" placeholder="Process trees, decoded commands, network connections, etc."></textarea>
-        </div>
-      </div>
-      <div class="form-row three">
-        <div class="form-field">
-          <label class="form-label">Was the activity successful?</label>
-          <select class="form-select" data-f="wasSuccessful">
-            <option>Yes</option><option selected>No</option><option>Unknown</option>
-          </select>
-        </div>
-        <div class="form-field">
           <label class="form-label">Verdict</label>
-          <select class="form-select" data-f="verdict">
-            <option selected>Malicious</option><option>Non-malicious</option><option>Suspicious</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label class="form-label">Categorisation</label>
           <select class="form-select" data-f="categorisation">
             <option value="TP" selected>True Positive (TP)</option>
             <option value="BTP">Benign True Positive (BTP)</option>
@@ -660,47 +611,92 @@ function alertBlockHTML(uid, num) {
       </div>
       <div class="form-row full">
         <div class="form-field">
-          <label class="form-label">Verdict Justification</label>
-          <textarea class="form-textarea" data-f="verdictJustification" rows="3" placeholder="Why did you reach this conclusion? Be specific."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-divider"></div>
-
-    <div class="inv-sub">
-      <div class="sub-label">Investigation Steps</div>
-      <div class="rep-rows" data-rep="steps"></div>
-      <button class="btn btn-add btn-sm" onclick="addStep(this)">+ Add Step</button>
-    </div>
-
-    <div class="form-divider"></div>
-
-    <div class="inv-sub">
-      <div class="sub-label">KQL Queries Used <span class="form-hint" style="margin-left:6px;">paste raw KQL — line breaks preserved</span></div>
-      <textarea class="form-textarea" data-f="queries" rows="5" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;" placeholder="// Paste your KQL queries here, separated by blank lines"></textarea>
-    </div>
-
-    <div class="form-divider"></div>
-
-    <div class="inv-sub">
-      <div class="sub-label">Recommended Actions</div>
-      <div class="form-row">
-        <div class="form-field">
-          <label class="form-label">Escalation</label>
-          <select class="form-select" data-f="escalation">
-            <option>Urgent</option><option>Non-urgent</option><option>None</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label class="form-label">Alert Tuning</label>
-          <input type="text" class="form-input" data-f="alertTuning" placeholder="Tune recommended / No tuning required" />
+          <label class="form-label">Title</label>
+          <input type="text" class="form-input" data-f="title" placeholder="e.g. Credential dumping and lateral movement from a phishing foothold" />
         </div>
       </div>
       <div class="form-row full">
         <div class="form-field">
-          <label class="form-label">Containment / Next Steps</label>
-          <textarea class="form-textarea" data-f="containment" rows="3" placeholder="What actions were taken or should be taken?"></textarea>
+          <label class="form-label">Reference <span class="form-hint">optional — e.g. the Defender incident or alert name</span></label>
+          <input type="text" class="form-input" data-f="reference" placeholder="SOCSIM - INC003 - Finance Workstation" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label">Summary <span class="form-hint">shown on your homepage card — easiest to write last</span></label>
+          <textarea class="form-textarea" data-f="summary" rows="3" placeholder="Two or three sentences a non-technical manager would understand: what happened, and what it meant."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
+      <div class="sub-label">Affected Assets <span class="form-hint" style="margin-left:6px;">devices, servers, user and service accounts, mailboxes…</span></div>
+      <div class="rep-rows" data-rep="assets"></div>
+      <button class="btn btn-add btn-sm" onclick="addAssetRow(this);markDirty()">+ Add Asset</button>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label">What Happened</label>
+          <textarea class="form-textarea" data-f="whatHappened" rows="6" placeholder="Walk through the activity: what was run, by which account, on which device — and what it actually does, in plain English. Why was the attacker doing it?"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
+      <div class="sub-label">Timeline <span class="form-hint" style="margin-left:6px;">malicious or suspicious activity in order — alerted on or not</span></div>
+      <div class="rep-rows" data-rep="timeline"></div>
+      <button class="btn btn-add btn-sm" onclick="addInvTimelineRow(this);markDirty()">+ Add Timeline Entry</button>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label">Investigation <span class="form-hint">pivots, hunting, leads followed</span></label>
+          <textarea class="form-textarea" data-f="investigation" rows="4" placeholder="Beyond what Defender flagged: what else did you look into? How did it get there, did it spread, what did hunting turn up — or rule out?"></textarea>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label">Queries <span class="form-hint">paste raw KQL — line breaks preserved</span></label>
+          <textarea class="form-textarea" data-f="queries" rows="5" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;" placeholder="// Paste your KQL queries here, separated by blank lines"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="inv-sub">
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label">Impact</label>
+          <textarea class="form-textarea" data-f="impact" rows="3" placeholder="What was actually affected? Did the activity succeed, or was it blocked, prevented, detected or remediated?"></textarea>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label">Verdict Justification</label>
+          <textarea class="form-textarea" data-f="verdictJustification" rows="3" placeholder="Why did you reach this verdict? Be specific."></textarea>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-field">
+          <label class="form-label">Response &amp; Recommendations</label>
+          <textarea class="form-textarea" data-f="response" rows="3" placeholder="Escalation, containment and remediation — and anything that was missed that should be detected next time."></textarea>
         </div>
       </div>
     </div>
@@ -717,7 +713,7 @@ function alertBlockHTML(uid, num) {
       <div class="form-row full" style="margin-top:4px;">
         <div class="form-field">
           <label class="form-label">Tools Used <span class="form-hint">one per line</span></label>
-          <textarea class="form-textarea" data-f="tools" rows="3" placeholder="Microsoft Defender for Endpoint&#10;KQL&#10;CyberChef"></textarea>
+          <textarea class="form-textarea" data-f="tools" rows="3" placeholder="Microsoft Defender XDR&#10;KQL&#10;CyberChef"></textarea>
         </div>
       </div>
     </div>
@@ -725,7 +721,7 @@ function alertBlockHTML(uid, num) {
     <div class="form-divider"></div>
 
     <div class="inv-sub">
-      <div class="sub-label">Custom Sections <span class="form-hint" style="margin-left:6px;">optional — your own headings, e.g. MITRE ATT&amp;CK Mapping, References</span></div>
+      <div class="sub-label">Custom Sections <span class="form-hint" style="margin-left:6px;">optional — your own headings, e.g. MITRE ATT&amp;CK Mapping, IOCs, References</span></div>
       <div class="rep-rows" data-rep="custom"></div>
       <button class="btn btn-add btn-sm" onclick="addCustomSection(this)">+ Add Custom Section</button>
     </div>
@@ -882,12 +878,38 @@ function becBlockHTML(uid, num) {
 /* ═══════════════════════════════════════════════════
    ROW TEMPLATES
 ═══════════════════════════════════════════════════ */
-function stepRowHTML(text) {
-  return `<div class="rep-row step-row">
+// × buttons mark the form dirty so the save status stays honest
+const RM_ROW = `<div class="rep-remove"><button class="btn btn-danger" onclick="this.closest('.rep-row').remove();markDirty()">×</button></div>`;
+
+function invTLRowHTML(time, activity, detail) {
+  return `<div class="rep-row inv-tl-row">
     <div class="rep-cell">
-      <input type="text" class="form-input" data-sub="step" value="${esc(text)}" placeholder="Describe this investigation step" />
+      <span class="rep-cell-label">Time (UTC)</span>
+      <input type="text" class="form-input" data-sub="time" value="${esc(time)}" placeholder="14 Oct 01:22" />
     </div>
-    <div class="rep-remove"><button class="btn btn-danger" onclick="this.closest('.rep-row').remove()">×</button></div>
+    <div class="rep-cell">
+      <span class="rep-cell-label">Activity</span>
+      <input type="text" class="form-input" data-sub="activity" value="${esc(activity)}" placeholder="Short description — e.g. LSASS memory dumped with comsvcs.dll" />
+    </div>
+    ${RM_ROW}
+    <div class="rep-cell rep-cell-wide">
+      <span class="rep-cell-label">Detail <span class="form-hint">optional · Markdown</span></span>
+      <textarea class="form-textarea" data-sub="detail" rows="2" placeholder="Command, device/account, and what it means in plain English — wrap commands in \`backticks\`">${esc(detail)}</textarea>
+    </div>
+  </div>`;
+}
+
+function assetRowHTML(name, note) {
+  return `<div class="rep-row asset-row">
+    <div class="rep-cell">
+      <span class="rep-cell-label">Asset</span>
+      <input type="text" class="form-input" data-sub="name" value="${esc(name)}" placeholder="WS-FIN-04 / j.smith@corp.local" />
+    </div>
+    <div class="rep-cell">
+      <span class="rep-cell-label">Note <span class="form-hint">optional</span></span>
+      <input type="text" class="form-input" data-sub="note" value="${esc(note)}" placeholder="e.g. Compromised — finance user's laptop" />
+    </div>
+    ${RM_ROW}
   </div>`;
 }
 
@@ -915,7 +937,7 @@ function becTLRowHTML(time, activity, detail) {
 ═══════════════════════════════════════════════════ */
 const mdes = {};
 
-const ALERT_MDE_FIELDS = ['whyTriggered','whatHappened','evidence','verdictJustification','containment','lessonsLearned'];
+const INV_MDE_FIELDS   = ['summary','whatHappened','investigation','impact','verdictJustification','response','lessonsLearned'];
 const BEC_MDE_FIELDS   = ['attackNarrative','initialAccess','unauthorisedActivity','dataAccess','lessonsLearned'];
 
 // The camera button uploads straight to the member's repo when GitHub
@@ -1004,7 +1026,7 @@ function initMDEs(block, uid, type) {
     }
     return;
   }
-  const fields = type === 'alert' ? ALERT_MDE_FIELDS : BEC_MDE_FIELDS;
+  const fields = type === 'investigation' ? INV_MDE_FIELDS : BEC_MDE_FIELDS;
   fields.forEach(field => {
     const el = block.querySelector(`[data-f="${field}"]`);
     if (!el) return;
@@ -1054,16 +1076,16 @@ function destroyMDEs(uid) {
 /* ═══════════════════════════════════════════════════
    ADD / REMOVE BLOCKS
 ═══════════════════════════════════════════════════ */
-function addAlert(data) {
-  alertCount++;
-  const uid = 'alt-' + Date.now() + alertCount;
+function addInvestigation(data) {
+  invCount++;
+  const uid = 'inv-' + Date.now() + invCount;
   const el = document.createElement('div');
-  el.innerHTML = alertBlockHTML(uid, alertCount);
+  el.innerHTML = invBlockHTML(uid, invCount);
   const block = el.firstElementChild;
-  document.getElementById('alerts-container').appendChild(block);
-  initMDEs(block, uid, 'alert');
+  document.getElementById('investigations-container').appendChild(block);
+  initMDEs(block, uid, 'investigation');
   if (data) {
-    populateAlertBlock(block, data, uid);
+    populateInvBlock(block, data, uid);
     toggleBlock(uid, true); // loaded cases start collapsed — headers only
   } else {
     markDirty();
@@ -1098,7 +1120,7 @@ function toggleBlock(uid, force) {
   const sum = block.querySelector('.inv-summary');
   if (collapsed) {
     const id = val(f(block, 'id'));
-    const name = val(f(block, 'alertName')) || val(f(block, 'caseName'));
+    const name = val(f(block, 'title')) || val(f(block, 'caseName'));
     if (sum) sum.textContent = [id, name].filter(Boolean).join(' — ') || 'Untitled';
   } else {
     if (sum) sum.textContent = '';
@@ -1126,12 +1148,16 @@ function removeBlock(uid) {
   markDirty();
 }
 
-function addStep(btn, text) {
-  const container = btn.previousElementSibling;
+function addRow(btn, html) {
   const el = document.createElement('div');
-  el.innerHTML = stepRowHTML(text ?? '');
-  container.appendChild(el.firstElementChild);
-  markDirty();
+  el.innerHTML = html;
+  btn.previousElementSibling.appendChild(el.firstElementChild);
+}
+function addInvTimelineRow(btn, time, activity, detail) {
+  addRow(btn, invTLRowHTML(time ?? '', activity ?? '', detail ?? ''));
+}
+function addAssetRow(btn, name, note) {
+  addRow(btn, assetRowHTML(name ?? '', note ?? ''));
 }
 
 function addBECTimelineRow(btn, time, activity, detail) {
@@ -1214,27 +1240,19 @@ function safeSet(block, field, v) {
   }
 }
 
-function populateAlertBlock(block, d, uid) {
+function populateInvBlock(block, d, uid) {
   const set = (field, v) => safeSet(block, field, v);
-  // plain inputs / selects / non-MDE textareas
-  set('id', d.id); set('alertName', d.alertName); set('alertId', d.alertId ?? '');
-  set('date', d.date); set('severity', d.severity); set('hostOrAccount', d.hostOrAccount);
-  set('dateTime', d.dateTime); set('whatTriggered', d.whatTriggered);
-  set('wasSuccessful', d.wasSuccessful); set('verdict', d.verdict);
-  set('categorisation', d.categorisation); set('queries', d.queries ?? '');
-  set('escalation', d.escalation); set('alertTuning', d.alertTuning ?? '');
-  set('tools', arr(d.tools).join('\n'));
+  set('id', d.id); set('title', d.title); set('reference', d.reference ?? '');
+  set('date', d.date); set('severity', d.severity); set('categorisation', d.categorisation);
+  set('queries', d.queries ?? ''); set('tools', arr(d.tools).join('\n'));
   const vc = f(block, 'verified'); if (vc) vc.checked = d.verified ?? false;
-  // MDE fields — must call after initMDEs
-  setMDE(uid, 'whyTriggered', d.whyTriggered, block);
-  setMDE(uid, 'whatHappened', d.whatHappened, block);
-  setMDE(uid, 'evidence', d.evidence, block);
-  setMDE(uid, 'verdictJustification', d.verdictJustification, block);
-  setMDE(uid, 'containment', d.containment, block);
-  setMDE(uid, 'lessonsLearned', d.lessonsLearned, block);
+  INV_MDE_FIELDS.forEach(field => setMDE(uid, field, d[field], block)); // after initMDEs
 
-  const stepBtn = block.querySelector('[data-rep="steps"] + button');
-  arr(d.investigationSteps).forEach(s => addStep(stepBtn, s));
+  const assetBtn = block.querySelector('[data-rep="assets"] + button');
+  arr(d.affectedAssets).forEach(a => addAssetRow(assetBtn, a?.name, a?.note));
+
+  const tlBtn = block.querySelector('[data-rep="timeline"] + button');
+  arr(d.timeline).forEach(e => addInvTimelineRow(tlBtn, e?.time, e?.activity, e?.detail));
 
   const csBtn = block.querySelector('[data-rep="custom"] + button');
   arr(d.customSections).forEach(s => addCustomSection(csBtn, s?.title, s?.content));
@@ -1279,27 +1297,32 @@ function collectData() {
     },
   };
 
-  const alerts = [];
-  document.querySelectorAll('[data-type="alert"]').forEach(block => {
+  const investigations = [];
+  document.querySelectorAll('[data-type="investigation"]').forEach(block => {
     const uid = block.dataset.uid;
     const get = field => val(f(block, field));
     const mget = field => getMDE(uid, field) || get(field); // prefer MDE value
-    const tools = get('tools').split('\n').map(s=>s.trim()).filter(Boolean);
-    const steps = [];
-    block.querySelectorAll('[data-rep="steps"] [data-sub="step"]').forEach(el => {
-      const s = val(el); if (s) steps.push(s);
+    const affectedAssets = [];
+    block.querySelectorAll('[data-rep="assets"] .rep-row').forEach(row => {
+      const name = val(row.querySelector('[data-sub="name"]'));
+      const note = val(row.querySelector('[data-sub="note"]'));
+      if (name || note) affectedAssets.push({ name, note });
     });
-    alerts.push({
-      id: get('id'), alertName: get('alertName'), alertId: get('alertId'),
-      date: get('date'), severity: get('severity'), hostOrAccount: get('hostOrAccount'),
-      dateTime: get('dateTime'), whatTriggered: get('whatTriggered'),
-      whyTriggered: mget('whyTriggered'), whatHappened: mget('whatHappened'),
-      evidence: mget('evidence'), wasSuccessful: get('wasSuccessful'),
-      verdict: get('verdict'), verdictJustification: mget('verdictJustification'),
-      investigationSteps: steps, queries: get('queries'),
-      categorisation: get('categorisation'), escalation: get('escalation'),
-      containment: mget('containment'), alertTuning: get('alertTuning'),
-      lessonsLearned: mget('lessonsLearned'), tools,
+    const timeline = [];
+    block.querySelectorAll('[data-rep="timeline"] .rep-row').forEach(row => {
+      const time     = val(row.querySelector('[data-sub="time"]'));
+      const activity = val(row.querySelector('[data-sub="activity"]'));
+      const detail   = val(row.querySelector('[data-sub="detail"]'));
+      if (time || activity || detail) timeline.push({ time, activity, detail });
+    });
+    investigations.push({
+      id: get('id'), title: get('title'), reference: get('reference'),
+      date: get('date'), severity: get('severity'), categorisation: get('categorisation'),
+      summary: mget('summary'), affectedAssets, whatHappened: mget('whatHappened'), timeline,
+      investigation: mget('investigation'), queries: f(block, 'queries')?.value.replace(/\s+$/, '') ?? '',
+      impact: mget('impact'), verdictJustification: mget('verdictJustification'),
+      response: mget('response'), lessonsLearned: mget('lessonsLearned'),
+      tools: get('tools').split('\n').map(s => s.trim()).filter(Boolean),
       customSections: collectCustomSections(block),
       verified: f(block, 'verified')?.checked ?? false,
     });
@@ -1331,7 +1354,7 @@ function collectData() {
     });
   });
 
-  return { profile, alerts, bec };
+  return { schemaVersion: window.SOCSIM_SCHEMA?.SCHEMA_VERSION ?? 3, profile, investigations, bec };
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1416,7 +1439,7 @@ async function loadFromGitHub(silent = false) {
   // Don't blow away unpublished edits without asking
   if (!silent) {
     const cur = collectData();
-    const hasContent = cur.profile.name || cur.alerts.length || cur.bec.length;
+    const hasContent = cur.profile.name || cur.investigations.length || cur.bec.length;
     if (hasContent && JSON.stringify(cur) !== cleanState && !confirm(
       'Loading from GitHub will replace everything currently in the form,\n' +
       'including any unpublished edits.\n\nContinue?'
@@ -1448,15 +1471,22 @@ async function loadFromGitHub(silent = false) {
     // GitHub returns content as base64 with newlines — strip them before decoding
     const json = decodeURIComponent(escape(atob(file.content.replace(/\n/g, ''))));
     const data = JSON.parse(json);
-    populateForm(data);
-    cleanState = JSON.stringify(collectData()); // this state already lives on GitHub
+    const converted = populateForm(data);
     clearDraft();
-    renderSaveStatus('clean');
-    showNotif(
-      silent ? '✓ Loaded from GitHub.' : '✓ Loaded your current portfolio from GitHub.',
-      'success',
-      silent ? 2000 : 4000
-    );
+    if (converted) {
+      // GitHub still holds the old format — leave the form "unpublished" so
+      // the converted version is drafted and the member is nudged to publish.
+      cleanState = null;
+      renderSaveStatus('dirty', 'converted to the new format — publish to save');
+    } else {
+      cleanState = JSON.stringify(collectData()); // this state already lives on GitHub
+      renderSaveStatus('clean');
+      showNotif(
+        silent ? '✓ Loaded from GitHub.' : '✓ Loaded your current portfolio from GitHub.',
+        'success',
+        silent ? 2000 : 4000
+      );
+    }
   } catch (e) {
     if (!silent) {
       showNotif(`✗ ${e.message}`, 'error', 6000);
@@ -1480,6 +1510,8 @@ async function publishToGitHub() {
     return;
   }
 
+  if (!schemaReady()) return;
+
   // Validate before publishing — catch everything that would break the
   // build or produce a broken-looking site, with a clear message.
   const data = collectData();
@@ -1489,16 +1521,16 @@ async function publishToGitHub() {
     problems.push('Add your Full Name in the Profile section (without it, your site shows the setup screen instead of your portfolio).');
   }
 
-  const allCases = [...data.alerts, ...data.bec];
+  const allCases = [...data.investigations, ...data.bec];
   const missingId = allCases.filter(c => !c.id).length;
   if (missingId > 0) {
     problems.push(`${missingId} case(s) are missing a Case ID — fill in the Case ID on every card.`);
   }
 
-  // IDs become URLs (/alerts/ALT-001/) — block characters that break routing
+  // IDs become URLs (/investigations/INV-001/) — block characters that break routing
   const badId = allCases.map(c => c.id).filter(id => id && !/^[A-Za-z0-9._-]+$/.test(id));
   if (badId.length > 0) {
-    problems.push(`Case ID "${badId[0]}" — use only letters, numbers, dashes, dots or underscores (e.g. ALT-001).`);
+    problems.push(`Case ID "${badId[0]}" — use only letters, numbers, dashes, dots or underscores (e.g. INV-001).`);
   }
 
   // Duplicate IDs would collide on the same URL
@@ -1536,12 +1568,15 @@ async function publishToGitHub() {
   // If the member didn't deliberately remove any cards this session, the
   // missing cases mean the form was never loaded — hard block, no dialog
   // to click through. Only intentional deletions get a confirm.
-  const ghAlerts = currentData?.alerts?.length ?? 0;
-  const ghBec    = currentData?.bec?.length    ?? 0;
-  if (data.alerts.length < ghAlerts || data.bec.length < ghBec) {
+  // currentData may still be in an older format (legacy alerts) — migrate it
+  // first so old alert write-ups count as investigations.
+  const gh       = window.SOCSIM_SCHEMA.migratePortfolio(currentData ?? {});
+  const ghInv    = gh.investigations.length;
+  const ghBec    = gh.bec.length;
+  if (data.investigations.length < ghInv || data.bec.length < ghBec) {
     if (removedCases === 0 && !loadedFromFile) {
       showNotif(
-        `✗ Publish blocked: your live portfolio has ${ghAlerts + ghBec} case(s) but this form only has ${data.alerts.length + data.bec.length}. ` +
+        `✗ Publish blocked: your live portfolio has ${ghInv + ghBec} case(s) but this form only has ${data.investigations.length + data.bec.length}. ` +
         `Click ⬇ Load from GitHub to pull in your existing cases first — publishing now would delete them.`,
         'error', 12000
       );
@@ -1550,10 +1585,10 @@ async function publishToGitHub() {
     const ok = confirm(
       `⚠ OVERWRITE WARNING\n\n` +
       `Your portfolio on GitHub currently has:\n` +
-      `  • ${ghAlerts} Alert Investigation(s)\n` +
+      `  • ${ghInv} Investigation(s)\n` +
       `  • ${ghBec} BEC Case Drop(s)\n\n` +
       `You are about to publish:\n` +
-      `  • ${data.alerts.length} Alert Investigation(s)\n` +
+      `  • ${data.investigations.length} Investigation(s)\n` +
       `  • ${data.bec.length} BEC Case Drop(s)\n\n` +
       `Publishing now will permanently remove cases from your live portfolio.\n\n` +
       `Press Cancel and use "⬇ Load from GitHub" to restore all your cases first.`
@@ -1615,21 +1650,33 @@ function loadJSON(input) {
       populateForm(d);
       loadedFromFile = true;
       showNotif('Portfolio loaded — check all fields then publish.');
-    } catch {
-      showNotif('Could not parse the file — make sure it is a valid portfolio.json.', 'error');
+    } catch (err) {
+      showNotif(err instanceof SyntaxError
+        ? 'Could not parse the file — make sure it is a valid portfolio.json.'
+        : `✗ ${err.message}`, 'error', 8000);
     }
   };
   reader.readAsText(file);
   input.value = '';
 }
 
+// Returns true if the source held older-format entries that were converted.
 function populateForm(d) {
+  // Migrate BEFORE touching the form: if anything goes wrong here, the form
+  // (and any draft) is left exactly as it was.
+  if (!window.SOCSIM_SCHEMA) throw new Error('Editor files are still loading — reload the page and try again.');
+  const converted = arr(d?.alerts).length > 0;
+  const data = window.SOCSIM_SCHEMA.migratePortfolio(d);
   populating = true;
   try {
-    populateFormInner(d);
+    populateFormInner(data);
   } finally {
     populating = false;
   }
+  if (converted) {
+    showNotif('Your alert write-ups were converted to the new Investigation format — nothing was removed. Review them, then Publish to save the new format (your live site already shows them).', 'success', 12000);
+  }
+  return converted;
 }
 
 function populateFormInner(d) {
@@ -1653,9 +1700,9 @@ function populateFormInner(d) {
   document.getElementById('p-email').value    = p.links?.email    ?? '';
   selectTheme(p.theme ?? 'operator');
 
-  document.getElementById('alerts-container').innerHTML = '';
-  alertCount = 0;
-  arr(d.alerts).forEach(a => addAlert(a ?? {}));
+  document.getElementById('investigations-container').innerHTML = '';
+  invCount = 0;
+  arr(d.investigations).forEach(inv => addInvestigation(inv ?? {}));
 
   document.getElementById('bec-container').innerHTML = '';
   becCount = 0;
@@ -1674,6 +1721,7 @@ function populateFormInner(d) {
 let cleanState = null;
 
 function autosave() {
+  if (!window.SOCSIM_SCHEMA) return; // form may be empty — never clobber a real draft
   try {
     const json = JSON.stringify(collectData());
     if (json === cleanState) {
@@ -1695,7 +1743,8 @@ function getDraft() {
   try {
     const d = JSON.parse(localStorage.getItem('socsim_draft'));
     // Only count as a draft if there's real content
-    if (!d?.profile?.name && !d?.alerts?.length && !d?.bec?.length) return null;
+    // countEntries understands every schema version, so an old-format draft still counts
+    if (!d?.profile?.name && !window.SOCSIM_SCHEMA?.countEntries(d)) return null;
     return d;
   } catch { return null; }
 }
@@ -1703,8 +1752,9 @@ function getDraft() {
 function restoreDraft() {
   const d = getDraft();
   if (!d) return;
-  if (confirm('Restore unsaved draft from your last session?')) populateForm(d);
-  else clearDraft();
+  if (confirm('Restore unsaved draft from your last session?')) {
+    try { populateForm(d); } catch (e) { showNotif(`✗ ${e.message}`, 'error', 10000); }
+  } else clearDraft();
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1713,13 +1763,14 @@ function restoreDraft() {
    The portfolio load is deferred to the 'load' event
    so EasyMDE (loaded from CDN at the bottom of the
    page) is guaranteed to be defined before any call
-   to new EasyMDE() inside addAlert / addBEC.
+   to new EasyMDE() inside addInvestigation / addBEC.
 ═══════════════════════════════════════════════════ */
 loadGHSettings();
 setInterval(autosave, 30000);
 window.addEventListener('beforeunload', autosave);
 
 window.addEventListener('load', async function () {
+  if (!schemaReady()) return;
   const hasCredentials = !!(
     localStorage.getItem('gh_owner')?.trim() &&
     localStorage.getItem('gh_repo')?.trim() &&
@@ -1772,6 +1823,6 @@ window.addEventListener('load', async function () {
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/easymde@2.21.0/dist/easymde.min.js" integrity="sha384-mTM6vzy+/UiHrMBClNGViM9qEv0/26iCGqpJKhSzdnjrxbKjO3vkT62ujXQ8B5iv" crossorigin="anonymous"></script>
 </body>
 </html>

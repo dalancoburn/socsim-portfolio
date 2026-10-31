@@ -3,13 +3,13 @@
 // Renders nothing until there is at least one case.
 
 interface Props {
-  alerts: Record<string, any>[];
+  investigations: Record<string, any>[];
   bec: Record<string, any>[];
 }
 
-const { alerts, bec } = Astro.props;
+const { investigations, bec } = Astro.props;
 
-const all = [...alerts, ...bec];
+const all = [...investigations, ...bec];
 const verified = all.filter((c) => c.verified).length;
 const tools = new Set(
   all.flatMap((c) => (Array.isArray(c.tools) ? c.tools : []))
@@ -18,7 +18,7 @@ const tools = new Set(
 );
 
 const stats = [
-  { num: alerts.length, label: 'Alert Investigations' },
+  { num: investigations.length, label: 'Investigations' },
   { num: bec.length,    label: 'BEC Case Drops' },
   { num: verified,      label: 'Lab-Verified' },
   { num: tools.size,    label: 'Tools Used' },

@@ -1,11 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProfileHeader from '../components/ProfileHeader.astro';
-import AlertCard from '../components/AlertCard.astro';
+import InvestigationCard from '../components/InvestigationCard.astro';
 import BECCard from '../components/BECCard.astro';
 import GettingStarted from '../components/GettingStarted.astro';
 import StatsStrip from '../components/StatsStrip.astro';
-import portfolio from '../data/portfolio.json';
+import { portfolio } from '../utils/portfolio';
 
 // Strip any trailing slash so we can always write `${base}/path` safely.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -16,17 +16,15 @@ const pageTitle = isTemplate
   ? 'SOCSIM Member Portfolio'
   : `${portfolio.profile.name} — SOCSIM Portfolio`;
 
-// Use ?? [] throughout so members who haven't updated their portfolio.json
-// yet (after a template upgrade adding new investigation types) get a graceful
-// empty section instead of a build error.
-const data = portfolio as Record<string, any>;
+// `portfolio` is already migrated to the current schema (legacy alert
+// write-ups arrive as investigations), and its arrays are always present.
 // Newest first. Dates are ISO (yyyy-mm-dd) so string comparison sorts
 // correctly; blank dates sink to the bottom.
 const byDateDesc = (key: string) => (a: Record<string, any>, b: Record<string, any>) =>
   String(b[key] ?? '').localeCompare(String(a[key] ?? ''));
 
-const alerts = ([...(data.alerts ?? [])] as Record<string, any>[]).sort(byDateDesc('date'));
-const bec    = ([...(data.bec    ?? [])] as Record<string, any>[]).sort(
+const investigations = [...portfolio.investigations].sort(byDateDesc('date'));
+const bec    = [...portfolio.bec].sort(
   (a, b) => String(b.investigationDate || b.incidentDateFrom || '')
     .localeCompare(String(a.investigationDate || a.incidentDateFrom || ''))
 );
@@ -46,19 +44,19 @@ const detailUrl = (section: string, id: string | undefined) => {
     <>
       <ProfileHeader profile={portfolio.profile} />
 
-      <StatsStrip alerts={alerts} bec={bec} />
+      <StatsStrip investigations={investigations} bec={bec} />
 
-      <!-- Alert Investigations -->
-      <div class="section-label">Alert Investigations</div>
+      <!-- Investigations -->
+      <div class="section-label">Investigations</div>
 
-      {alerts.length === 0 ? (
-        <div class="empty-state">No alert investigations yet.</div>
+      {investigations.length === 0 ? (
+        <div class="empty-state">No investigations yet.</div>
       ) : (
-        alerts.map((a) => (
-          <AlertCard
-            alert={a}
+        investigations.map((inv) => (
+          <InvestigationCard
+            investigation={inv}
             compact={true}
-            detailUrl={detailUrl('alerts', a.id)}
+            detailUrl={detailUrl('investigations', inv.id)}
           />
         ))
       )}

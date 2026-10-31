@@ -1,0 +1,147 @@
+{
+  "profile": {
+    "name": "Marcus Chen",
+    "role": "Security Analyst II",
+    "tagline": "Incident response and threat hunting in cloud-native environments. Focus areas: identity attacks, M365 forensics, and detection engineering.",
+    "location": "Austin, TX",
+    "photo": "",
+    "links": {
+      "linkedin": "https://linkedin.com/in/marcuschen",
+      "github": "https://github.com/marcuschen",
+      "email": "m.chen@example.com"
+    },
+    "theme": "operator"
+  },
+  "bec": [
+    {
+      "id": "BEC-001",
+      "caseName": "BEC Case Drop 1 — CFO Account Takeover",
+      "caseReference": "WDL-BEC-2024-001",
+      "affectedAccount": "cfo@[org].com",
+      "incidentDateFrom": "2024-11-10",
+      "incidentDateTo": "2024-11-11",
+      "investigationDate": "2024-11-11",
+      "attackNarrative": "An AiTM (Adversary-in-the-Middle) phishing kit operating as a reverse proxy to the Microsoft sign-in portal captured the CFO's session cookie immediately after successful MFA. The adversary replayed the stolen token from a Tor exit node, maintaining persistent Exchange access for 6 hours without knowledge of the account password. A malicious inbox forwarding rule silently exfiltrated 14 emails containing financial correspondence. A fraudulent wire transfer of $127,000 was drafted and sent — identified and blocked 58 minutes after the initial Sentinel alert fired, before the transfer settled.",
+      "timeline": [
+        {
+          "time": "20:14 UTC (D-1)",
+          "activity": "Threat actor initial access via AiTM kit",
+          "detail": "CFO authenticates through credential-secure-login[.]com, a reverse proxy mimicking the Microsoft sign-in portal. Session cookie captured by adversary immediately after MFA completion."
+        },
+        {
+          "time": "20:31 UTC (D-1)",
+          "activity": "Malicious inbox rule created",
+          "detail": "Adversary creates rule: IF subject contains 'wire', 'transfer', 'payment', or 'invoice' → forward to ext_forward_bec2024@proton.me AND mark as read."
+        },
+        {
+          "time": "02:14 UTC",
+          "activity": "Sentinel fusion alert fires",
+          "detail": "Impossible Travel + MFA Fatigue alerts correlated into single P1 incident. On-call analyst paged."
+        },
+        {
+          "time": "02:22 UTC",
+          "activity": "IP-first triage — adversary IP confirmed malicious",
+          "detail": "Legitimate source 24.118.x.x (Austin TX) vs adversary 185.220.101.47 (Bucharest, RO). AbuseIPDB returns 97% confidence — active Tor exit relay."
+        },
+        {
+          "time": "02:41 UTC",
+          "activity": "Session ID pivot — stolen token identified",
+          "detail": "Microsoft Graph API (auditLogs/signIns) confirms active refresh token still valid. Phishing domain extracted from sign-in referrer header."
+        },
+        {
+          "time": "02:58 UTC",
+          "activity": "Malicious inbox rule discovered",
+          "detail": "Exchange Online audit log surfaces forwarding rule created at 20:31 UTC prior day. 14 emails exfiltrated over 6-hour dwell window."
+        },
+        {
+          "time": "03:12 UTC",
+          "activity": "Containment — sessions revoked",
+          "detail": "All active sessions revoked via Graph API revokeSignInSessions. Conditional Access policy updated. MFA registration locked."
+        },
+        {
+          "time": "04:45 UTC",
+          "activity": "Wire transfer blocked",
+          "detail": "Bank fraud line contacted. $127,000 transfer flagged before settlement window. No financial loss."
+        }
+      ],
+      "initialAccess": "AiTM phishing kit at credential-secure-login[.]com operated as a reverse proxy to the legitimate Microsoft sign-in portal. After the CFO completed MFA, the kit captured the post-authentication session cookie. Token replay from Tor exit node 185.220.101.47 bypassed Conditional Access — legacy CAE enforcement was absent from executive accounts, leaving the stolen token valid for 6 hours across IP change.",
+      "unauthorisedActivity": "Adversary created inbox forwarding rule matching financial keywords (wire, transfer, payment, invoice), forwarding all matches to an external Proton Mail address and marking them as read to conceal the rule's operation. 14 emails exfiltrated during the 6-hour dwell window. A fraudulent wire transfer request for $127,000 was composed and sent to the Finance team from the compromised mailbox.",
+      "dataAccess": "Exchange Online: 14 emails with financial subject lines exfiltrated via inbox forwarding rule. Content included pending vendor payments, internal budget approvals, and banking correspondence. SharePoint/OneDrive: no evidence of access — sign-in logs show no document requests from adversary session. Blast radius limited to mailbox content visible to the CFO account.",
+      "lessonsLearned": "CAE enforcement should be mandatory for all executive accounts — the 6-hour token validity window was entirely preventable. A KQL rule alerting on inbox rule creation for accounts in the Executive security group within 60 minutes of an Impossible Travel event would have triggered containment 74 minutes earlier. Added both detections to the SIEM post-incident.",
+      "tools": [
+        "Microsoft Sentinel",
+        "KQL",
+        "Microsoft Graph API",
+        "Exchange Online Admin",
+        "AbuseIPDB",
+        "VirusTotal",
+        "Shodan",
+        "Logic Apps"
+      ],
+      "pdfUrl": "",
+      "verified": true
+    }
+  ],
+  "schemaVersion": 3,
+  "investigations": [
+    {
+      "id": "INV-001",
+      "title": "Credential dumping and lateral movement from phishing foothold",
+      "reference": "SOCSIM - INC003 - Finance Workstation",
+      "date": "2026-10-14",
+      "severity": "High",
+      "categorisation": "TP",
+      "summary": "An attacker who gained access to a finance workstation through a phishing document dumped saved credentials and used them to reach the file server. Access was contained within 40 minutes.",
+      "affectedAssets": [
+        {
+          "name": "WS-FIN-04",
+          "note": "Compromised — finance user's laptop"
+        },
+        {
+          "name": "SRV-FS-01",
+          "note": "Accessed with stolen credentials"
+        },
+        {
+          "name": "j.smith@corp.local",
+          "note": "Credentials stolen"
+        }
+      ],
+      "whatHappened": "Defender raised three alerts under incident **INC003**. Walking the process tree from `WINWORD.EXE` showed…",
+      "timeline": [
+        {
+          "time": "2026-10-14 01:14 UTC",
+          "activity": "Macro launches PowerShell",
+          "detail": "`powershell.exe -enc JABzAD0A…` decoded to a download cradle"
+        },
+        {
+          "time": "2026-10-14 01:22 UTC",
+          "activity": "LSASS dumped with comsvcs.dll",
+          "detail": "`rundll32.exe C:\\Windows\\System32\\comsvcs.dll, MiniDump 624 C:\\Temp\\out.dmp full`"
+        },
+        {
+          "time": "2026-10-14 01:31 UTC",
+          "activity": "SMB logon to SRV-FS-01 (not alerted)",
+          "detail": "Found with KQL — see Investigation"
+        }
+      ],
+      "investigation": "Hunted `DeviceLogonEvents` for j.smith after 01:22 and found a network logon to SRV-FS-01 that Defender did not alert on.\n\n![screenshot](https://example.com/x.png)",
+      "queries": "DeviceLogonEvents\n| where AccountName == \"j.smith\"\n| where TimeGenerated > datetime(2026-10-14T01:22:00Z)",
+      "impact": "Credentials for one user stolen; file server accessed read-only. No evidence of exfiltration.",
+      "verdictJustification": "Encoded download cradle from an Office macro followed by LSASS access is unambiguous.",
+      "response": "Isolate WS-FIN-04, reset j.smith, hunt for the dropped `out.dmp` across the estate.",
+      "lessonsLearned": "Check for activity Defender did *not* alert on.",
+      "tools": [
+        "Microsoft Defender XDR",
+        "KQL",
+        "CyberChef"
+      ],
+      "customSections": [
+        {
+          "title": "MITRE ATT&CK",
+          "content": "- T1003.001"
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

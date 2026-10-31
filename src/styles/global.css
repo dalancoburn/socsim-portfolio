@@ -734,6 +734,28 @@ nav.site-nav {
   line-height: 1.6;
 }
 
+/* Investigation timeline details are Markdown (commands, links, lists) */
+.bec-tl-detail.md-content { font-size: 0.82rem; color: var(--text-dim); line-height: 1.6; }
+
+/* ── AFFECTED ASSETS ───────────────────────────────────────── */
+.asset-list { display: flex; flex-direction: column; gap: 8px; }
+.asset-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.asset-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+}
+.asset-note { font-size: 0.82rem; color: var(--text-dim); }
+
 /* ── MARKDOWN CONTENT ──────────────────────────────────────── */
 .md-content { font-size: 0.88rem; color: var(--text); line-height: 1.75; }
 .md-content p { margin-bottom: 0.75em; }

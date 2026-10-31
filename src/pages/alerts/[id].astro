@@ -1,43 +1,28 @@
 ---
+// Alert write-ups became investigations (schema v3). Old links such as
+// /alerts/ALT-001/ — shared on LinkedIn, in CVs — redirect to the new page.
 import type { GetStaticPaths } from 'astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import AlertCard from '../../components/AlertCard.astro';
-import portfolio from '../../data/portfolio.json';
-import { mdToText } from '../../utils/md';
+import { portfolio, routable } from '../../utils/portfolio';
 
-export const getStaticPaths = (() => {
-  // Skip blank IDs and dedupe (first occurrence wins) so a member's
-  // copy-pasted duplicate Case ID can never break the whole build.
-  const seen = new Set<string>();
-  return ((portfolio as Record<string, any>).alerts ?? [])
-    .filter((a: any) => {
-      const id = String(a.id ?? '').trim();
-      if (!id || seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    })
-    .map((a: any) => ({
-      params: { id: String(a.id).trim() },
-      props: { alert: a },
-    }));
-}) satisfies GetStaticPaths;
+export const getStaticPaths = (() =>
+  routable(portfolio.investigations).map((inv) => ({
+    params: { id: String(inv.id).trim() },
+  }))
+) satisfies GetStaticPaths;
 
-const { alert } = Astro.props;
-const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
-const pageTitle = `${alert.id} — ${alert.alertName} — ${portfolio.profile.name}`;
-const pageDescription = mdToText(alert.whatHappened)
-  || [alert.severity && `${alert.severity} severity`, alert.verdict, `investigated by ${portfolio.profile.name}`]
-       .filter(Boolean).join(' · ');
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const target = `${base}/investigations/${encodeURIComponent(Astro.params.id!)}/`;
 ---
-<BaseLayout title={pageTitle} description={pageDescription}>
-  <div style="margin-bottom:32px;">
-    <a
-      href={base}
-      style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);text-decoration:none;letter-spacing:0.08em;"
-    >
-      ← {portfolio.profile.name}
-    </a>
-  </div>
-
-  <AlertCard alert={alert} />
-</BaseLayout>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Moved</title>
+    <meta http-equiv="refresh" content={`0; url=${target}`} />
+    <link rel="canonical" href={target} />
+    <meta name="robots" content="noindex" />
+  </head>
+  <body>
+    <p>This investigation has moved: <a href={target}>{target}</a></p>
+  </body>
+</html>

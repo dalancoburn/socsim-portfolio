@@ -7,7 +7,7 @@ The SOC Simulation Project · skool.com/socsim/about
 WHAT IS THIS?
 ─────────────
 Your portfolio is a personal website where you document every
-alert investigation and BEC case drop you complete in the SOCSIM
+investigation and BEC case drop you complete in the SOCSIM
 lab. It shows the work behind the cert — your methodology, your
 findings, your tooling.
 
@@ -102,7 +102,7 @@ add it to your portfolio:
      This loads all your existing investigations so you do not
      overwrite anything.
   3. Scroll down to the relevant section:
-     — Alert Investigations  →  click "+ Add Alert Investigation"
+     — Investigations        →  click "+ Add Investigation"
      — BEC Case Drops        →  click "+ Add BEC Case Drop"
   4. Fill in the fields (see below — same order as the form).
   5. Click "⬆ Publish to GitHub"
@@ -113,47 +113,60 @@ dots, dashes and underscores (it becomes part of a URL). The
 editor blocks publishing if a Case ID breaks this rule.
 
 
-ALERT INVESTIGATION FIELDS — grouped exactly as the form shows them
+INVESTIGATION FIELDS — in the same order as the form
+
+  An investigation can cover a single alert, a whole Defender
+  incident, or activity you found through hunting. Only the top
+  fields are structured; everything else is free-form, and any
+  section you leave empty is hidden on your site.
 
   Case details
-    Case ID              Unique code. Suggested format: ALT-001, ALT-002…
+    Case ID              Unique code. Suggested format: INV-001, INV-002…
     Date Investigated    When you investigated it.
     Severity              Critical / High / Medium / Low
-    Alert ID              Optional. The alert ID or link from Sentinel/MDE.
-    Alert Name            The name of the alert as it appeared in the tool.
-    Host / Account Affected   The affected machine or user account.
-    Date & Time of Alert  When the alert fired (include timezone, e.g. UTC).
+    Verdict               True Positive / Benign True Positive / False Positive
+    Title                 A short description of what you investigated.
+    Reference             Optional. e.g. the Defender incident or alert name.
 
-  Alert Summary
-    What triggered the alert   Which rule or detection fired, and on what.
-    Why it triggered            The detection logic behind the rule.
+  Summary
+    Two or three plain-English sentences — shown on your homepage
+    card. Easiest to write last.
 
-  Investigation Findings
-    What happened          Your narrative of the incident.
-    Evidence                Artefacts, log entries, process trees, decoded output.
-    Was the activity successful?   Did the attack succeed? Yes / No / Unknown
-    Verdict                  Malicious / Non-malicious / Suspicious
-    Categorisation          True Positive / Benign True Positive / False Positive
-    Verdict Justification   Why you reached that verdict and categorisation.
+  Affected Assets
+    Click "+ Add Asset" for each device, server, user or service
+    account, or mailbox involved. Add an optional note, e.g.
+    "Compromised — finance user's laptop".
 
-  Investigation Steps
-    A numbered walkthrough of what you did — click "+ Add Step" per line.
+  What Happened
+    Your main write-up: what was run, by which account, on which
+    device, what it does in plain English, and why the attacker
+    did it. Mention the alerts here however you like.
 
-  KQL Queries Used
-    Paste any queries you used (raw KQL, line breaks preserved).
+  Timeline
+    Click "+ Add Timeline Entry" for each malicious or suspicious
+    event, in order — whether Defender alerted on it or not.
+    Time (UTC) · Activity · Detail (optional, Markdown — wrap
+    commands in `backticks`).
 
-  Recommended Actions
-    Escalation             Urgent / Non-urgent / None
-    Alert Tuning           Does the detection rule need adjusting?
-    Containment / Next Steps   What actions were taken or recommended.
+  Investigation & Queries
+    Investigation   Pivots, hunting and leads you followed — what
+                    you found, and what you ruled out.
+    Queries         Paste any KQL you used (line breaks preserved).
+
+  Impact, Verdict & Response
+    Impact                      What was affected; did it succeed, or was
+                                it blocked / prevented / detected / remediated?
+    Verdict Justification       Why you reached your verdict.
+    Response & Recommendations  Escalation, containment, remediation, and
+                                anything that should be detected next time.
 
   Lessons Learned & Tools
     Lessons Learned   What you would do differently next time.
-    Tools Used         One tool per line (e.g. Microsoft Defender for Endpoint).
+    Tools Used         One tool per line (e.g. Microsoft Defender XDR).
 
   Custom Sections
-    Optional. Add your own headings — e.g. "MITRE ATT&CK Mapping" or
-    "References" — with Markdown content.
+    Optional. Add your own headings — e.g. "MITRE ATT&CK Mapping",
+    "IOCs" or "References" — with Markdown content.
 
   SOCSIM Verified
     Tick this if the investigation was done in the live lab.
@@ -333,11 +346,30 @@ CASE ID NAMING CONVENTION
 
 Use this format to keep IDs consistent:
 
-  Alert investigations:   ALT-001, ALT-002, ALT-003 ...
+  Investigations:         INV-001, INV-002, INV-003 ...
+  (Older ALT- IDs carry over unchanged.)
   BEC case drops:         BEC-001, BEC-002, BEC-003 ...
 
 This keeps your portfolio sortable and compatible with the
 future central SOCSIM member directory.
+
+
+────────────────────────────────────────────────────────────
+ALREADY HAVE ALERT WRITE-UPS? (existing members)
+────────────────────────────────────────────────────────────
+
+"Alert Investigations" are now "Investigations". When you update
+your template, nothing is lost:
+
+  - Your site shows your existing write-ups straight away.
+  - The next time you open the editor, each alert write-up is
+    converted to an investigation. Every field you wrote is kept:
+    the alert itself becomes the first timeline entry, your steps
+    and evidence move into "Investigation", and escalation /
+    containment / tuning move into "Response & Recommendations".
+  - Review them, then click Publish to save the new format.
+  - Old links (…/alerts/ALT-001/) keep working — they redirect to
+    the new page.
 
 
 ════════════════════════════════════════════════════════════
