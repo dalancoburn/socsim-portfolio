@@ -184,6 +184,14 @@
     .rep-row.inv-tl-row{grid-template-columns:150px 1fr auto}
     .rep-row.inv-tl-row .rep-cell-wide{grid-column:1 / -1}
     .rep-row.asset-row{grid-template-columns:1fr 2fr auto}
+    .guide{margin:2px 0 8px;font-size:.78rem}
+    .guide summary{cursor:pointer;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.06em;list-style:none;display:inline-flex;align-items:center;gap:6px;user-select:none}
+    .guide summary::-webkit-details-marker{display:none}
+    .guide summary::before{content:'▸';transition:transform .15s}
+    .guide[open] summary::before{transform:rotate(90deg)}
+    .guide ul{margin:8px 0 4px;padding:10px 14px 10px 28px;background:var(--surface-2);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:4px;color:var(--text-dim);line-height:1.6}
+    .guide li{margin-bottom:4px}
+    .guide li:last-child{margin-bottom:0}
     .rep-cell{display:flex;flex-direction:column;gap:3px}
     .rep-cell-label{font-family:'JetBrains Mono',monospace;font-size:.54rem;color:var(--dimmer);letter-spacing:.1em;text-transform:uppercase}
     .rep-remove{align-self:flex-end;padding-bottom:1px}
@@ -573,6 +581,63 @@ function updateGHStatus() {
    are structured — everything else is free-form Markdown, and empty
    sections are hidden on the live site.
 ═══════════════════════════════════════════════════ */
+/* Guiding questions, drawn from the SOCSIM alert triage cheatsheet.
+   Collapsed by default — a prompt for members who are stuck, not a form. */
+const GUIDES = {
+  summary: [
+    'In one or two sentences: what happened, and what did it mean?',
+    'Was it malicious — and did the attacker succeed?',
+    'Could a non-technical manager understand it without asking you anything?',
+  ],
+  assets: [
+    'Which devices, servers and accounts were involved?',
+    'Which were actually compromised, and which were only targeted — or checked and ruled out?',
+    'Did a new device or account appear while you were pivoting?',
+  ],
+  whatHappened: [
+    'What is the big picture — is there a theme, such as credential harvesting or enumeration?',
+    'Why did the alert(s) trigger — malware, suspicious behaviour, or interaction with sensitive parts of Windows?',
+    'What was the threat actor trying to do? Explain each command, tool or piece of malware in plain English — don’t just repeat what Defender says.',
+    'Why did they do it? What was the intent, and what did they gain?',
+  ],
+  timeline: [
+    'Start at the top of the process tree and work down — most of it is normal Windows activity.',
+    'For anything malicious or suspicious, note the time, command, account and device.',
+    'For each entry: what was it actually doing, in plain English?',
+    'Include activity Defender didn’t alert on.',
+  ],
+  investigation: [
+    'How did the malware or tool get onto the device, and how long has it been there?',
+    'Did you spot a connection to a new device or account? Did anything execute there?',
+    'What might Defender have missed? What did Advanced Hunting / KQL turn up — or rule out?',
+  ],
+  queries: [
+    'Which tables did you search (DeviceProcessEvents, DeviceNetworkEvents, DeviceFileEvents…) and why?',
+    'Add a // comment above each query saying what it was for and what it found.',
+  ],
+  impact: [
+    'What was the total impact — which devices, accounts and data were affected?',
+    'Did it execute successfully, or was it blocked, detected, remediated or prevented? (They mean different things.)',
+  ],
+  verdictJustification: [
+    'Is it malicious, benign, or a false positive?',
+    'What specific evidence supports your verdict?',
+    'Does it need escalating, or can it be closed off?',
+  ],
+  response: [
+    'Does this need escalating — to whom, and how urgently?',
+    'What containment and remediation is needed (isolate, reset credentials, remove persistence…)?',
+    'What did Defender miss that should be detected next time?',
+  ],
+  lessonsLearned: [
+    'What slowed you down or confused you?',
+    'What would you do differently next time?',
+    'What did you learn about what “normal” looks like?',
+  ],
+};
+const guide = key => `<details class="guide"><summary>Guiding questions</summary><ul>${
+  GUIDES[key].map(q => `<li>${esc(q)}</li>`).join('')}</ul></details>`;
+
 function invBlockHTML(uid, num) {
   return `<div class="inv-block" data-uid="${uid}" data-type="investigation">
   <div class="inv-block-header" onclick="toggleBlock('${uid}')" title="Click to collapse / expand">
@@ -629,6 +694,7 @@ function invBlockHTML(uid, num) {
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Summary <span class="form-hint">shown on your homepage card — easiest to write last</span></label>
+          ${guide('summary')}
           <textarea class="form-textarea" data-f="summary" rows="3" placeholder="Two or three sentences a non-technical manager would understand: what happened, and what it meant."></textarea>
         </div>
       </div>
@@ -638,6 +704,7 @@ function invBlockHTML(uid, num) {
 
     <div class="inv-sub">
       <div class="sub-label">Affected Assets <span class="form-hint" style="margin-left:6px;">devices, servers, user and service accounts, mailboxes…</span></div>
+      ${guide('assets')}
       <div class="rep-rows" data-rep="assets"></div>
       <button class="btn btn-add btn-sm" onclick="addAssetRow(this);markDirty()">+ Add Asset</button>
     </div>
@@ -648,6 +715,7 @@ function invBlockHTML(uid, num) {
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">What Happened</label>
+          ${guide('whatHappened')}
           <textarea class="form-textarea" data-f="whatHappened" rows="6" placeholder="Walk through the activity: what was run, by which account, on which device — and what it actually does, in plain English. Why was the attacker doing it?"></textarea>
         </div>
       </div>
@@ -657,6 +725,7 @@ function invBlockHTML(uid, num) {
 
     <div class="inv-sub">
       <div class="sub-label">Timeline <span class="form-hint" style="margin-left:6px;">malicious or suspicious activity in order — alerted on or not</span></div>
+      ${guide('timeline')}
       <div class="rep-rows" data-rep="timeline"></div>
       <button class="btn btn-add btn-sm" onclick="addInvTimelineRow(this);markDirty()">+ Add Timeline Entry</button>
     </div>
@@ -667,12 +736,14 @@ function invBlockHTML(uid, num) {
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Investigation <span class="form-hint">pivots, hunting, leads followed</span></label>
+          ${guide('investigation')}
           <textarea class="form-textarea" data-f="investigation" rows="4" placeholder="Beyond what Defender flagged: what else did you look into? How did it get there, did it spread, what did hunting turn up — or rule out?"></textarea>
         </div>
       </div>
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Queries <span class="form-hint">paste raw KQL — line breaks preserved</span></label>
+          ${guide('queries')}
           <textarea class="form-textarea" data-f="queries" rows="5" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;" placeholder="// Paste your KQL queries here, separated by blank lines"></textarea>
         </div>
       </div>
@@ -684,18 +755,21 @@ function invBlockHTML(uid, num) {
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Impact</label>
+          ${guide('impact')}
           <textarea class="form-textarea" data-f="impact" rows="3" placeholder="What was actually affected? Did the activity succeed, or was it blocked, prevented, detected or remediated?"></textarea>
         </div>
       </div>
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Verdict Justification</label>
+          ${guide('verdictJustification')}
           <textarea class="form-textarea" data-f="verdictJustification" rows="3" placeholder="Why did you reach this verdict? Be specific."></textarea>
         </div>
       </div>
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Response &amp; Recommendations</label>
+          ${guide('response')}
           <textarea class="form-textarea" data-f="response" rows="3" placeholder="Escalation, containment and remediation — and anything that was missed that should be detected next time."></textarea>
         </div>
       </div>
@@ -707,6 +781,7 @@ function invBlockHTML(uid, num) {
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Lessons Learned</label>
+          ${guide('lessonsLearned')}
           <textarea class="form-textarea" data-f="lessonsLearned" rows="3" placeholder="What would you do differently? What does this case teach you?"></textarea>
         </div>
       </div>
