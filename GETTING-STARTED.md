@@ -2,7 +2,7 @@
 
 *The SOC Simulation Project · [skool.com/socsim](https://skool.com/socsim/about)*
 
-Your portfolio is a personal website that documents every alert investigation and BEC case drop you complete in the SOCSIM lab — your methodology, your findings, your tooling. It shows the work behind the cert.
+Your portfolio is a personal website that documents every investigation and BEC case drop you complete in the SOCSIM lab — your methodology, your findings, your tooling. It shows the work behind the cert.
 
 You fill it in through a form-based editor in your browser. **No coding required.**
 
@@ -71,12 +71,16 @@ Every time you complete an investigation in the SOCSIM lab:
 
 1. Open your editor
 2. Click **⬇ Load from GitHub** (loads existing work so nothing gets overwritten)
-3. Click **+ Add Alert Investigation** or **+ Add BEC Case Drop**
+3. Click **+ Add Investigation** or **+ Add BEC Case Drop**
 4. Fill in the fields
 5. Click **⬆ Publish to GitHub** — live in ~60 seconds
 
-### Alert Investigation fields
-Case ID (`ALT-001`, `ALT-002`, …) · Alert Name · Alert ID · Date · Severity · Host/Account · Date & Time (with timezone) · What triggered it · Why it triggered · What happened · Evidence · Was it successful · Verdict + reason · Investigation steps · KQL queries · Categorisation (TP / BTP / FP) · Escalation · Containment · Alert tuning notes · Lessons learned · Tools used · Custom sections (optional, e.g. MITRE ATT&CK mapping) · SOCSIM Verified checkbox
+### Investigation fields
+An investigation can cover a single alert, a whole Defender incident, or activity you found by hunting. Only the top fields are structured — everything else is free-form, and empty sections are hidden on your site.
+
+Case ID (`INV-001`, `INV-002`, …) · Date · Severity · Verdict (TP / BTP / FP) · Title · Reference (optional, e.g. the Defender incident name) · Summary (plain English, shown on your homepage card) · Affected Assets (devices, servers, accounts, with an optional note) · What Happened · Timeline (time / activity / detail — alerted on or not) · Investigation (pivots and hunting) · Queries · Impact · Verdict Justification · Response & Recommendations · Lessons Learned · Tools Used · Custom sections (optional, e.g. MITRE ATT&CK, IOCs) · SOCSIM Verified checkbox
+
+> **Already have alert write-ups?** "Alert Investigations" are now "Investigations". After updating your template, your site shows your existing write-ups straight away. The next time you open the editor they're converted automatically — every field is kept (the alert becomes the first timeline entry; steps and evidence move into *Investigation*). Review, then **Publish** to save the new format. Old `/alerts/…` links redirect to the new pages.
 
 ### BEC Case Drop fields
 Case ID (`BEC-001`, `BEC-002`, …) · Case Name · Case Reference · Affected Account · Incident dates · Investigation date · PDF Report URL (optional) · Attack Narrative (write this last, for a non-technical reader) · Timeline (time / activity / detail entries) · Initial Access · Unauthorised Activity · Data Access · Lessons Learned · Tools Used · Custom sections (optional) · SOCSIM Verified checkbox
@@ -116,7 +120,7 @@ Or type it directly: `**bold**`, `` `code` ``, `- bullet`, `1. numbered`.
 
 - **Collapsible cases** — loaded investigations collapse to a one-line summary (ID — name) so a long portfolio stays scannable. Click a case to expand it.
 - **Save status** — the action bar shows *unpublished changes*, *draft saved [time]*, or *all changes published*, so you always know if something needs publishing.
-- **Portfolio stats** — your published site auto-shows a stats strip (alert count, BEC count, lab-verified count, unique tools) once you have investigations live.
+- **Portfolio stats** — your published site auto-shows a stats strip (investigation count, BEC count, lab-verified count, unique tools) once you have investigations live.
 
 ---
 
@@ -137,7 +141,7 @@ Your data (`portfolio.json`) is never touched by an update — only the site cod
 
 Keep IDs consistent so portfolios stay sortable and compatible with the future central SOCSIM member directory:
 
-- Alert investigations: `ALT-001`, `ALT-002`, `ALT-003` …
+- Investigations: `INV-001`, `INV-002`, `INV-003` … (older `ALT-` IDs carry over unchanged)
 - BEC case drops: `BEC-001`, `BEC-002`, `BEC-003` …
 
 ---

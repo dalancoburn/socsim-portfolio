@@ -1,0 +1,231 @@
+---
+import VerifiedBadge from './VerifiedBadge.astro';
+import { md } from '../utils/md';
+
+// Data arrives already migrated (src/utils/portfolio.ts), so legacy alert
+// write-ups render through this same component.
+interface Investigation {
+  id: string;
+  title: string;
+  reference?: string;
+  date?: string;
+  severity?: string;
+  categorisation?: string;
+  summary?: string;
+  affectedAssets?: { name: string; note?: string }[];
+  whatHappened?: string;
+  timeline?: { time?: string; activity?: string; detail?: string }[];
+  investigation?: string;
+  queries?: string;
+  impact?: string;
+  verdictJustification?: string;
+  response?: string;
+  lessonsLearned?: string;
+  tools?: string[];
+  customSections?: { title: string; content: string }[];
+  verified?: boolean;
+}
+
+interface Props {
+  investigation: Investigation;
+  detailUrl?: string;
+  compact?: boolean;
+}
+
+const { investigation: inv, detailUrl } = Astro.props;
+const compact = Astro.props.compact ?? !!detailUrl;
+
+const severityClass: Record<string, string> = {
+  Critical: 'severity-critical',
+  High:     'severity-high',
+  Medium:   'severity-medium',
+  Low:      'severity-low',
+};
+const catClass: Record<string, string> = { TP: 'cat-tp', BTP: 'cat-btp', FP: 'cat-fp' };
+const catLabel: Record<string, string> = { TP: 'True Positive', BTP: 'Benign TP', FP: 'False Positive' };
+
+// Empty or malformed dates must never render as "Invalid Date"
+function fmtDate(iso: string | undefined): string {
+  if (!iso?.trim()) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+const dateLabel = fmtDate(inv.date);
+const title = inv.title?.trim() || 'Untitled investigation';
+
+// Tolerate hand-edited portfolio.json where arrays were removed or mangled
+const list = <T,>(v: T[] | undefined) => (Array.isArray(v) ? v : []);
+const assets = list(inv.affectedAssets).filter((a) => a?.name?.trim());
+const timeline = list(inv.timeline).filter((e) => e?.time || e?.activity || e?.detail);
+const tools = list(inv.tools);
+const customSections = list(inv.customSections).filter((s) => s?.title || s?.content);
+
+// Card blurb: the plain-English summary, falling back to the narrative
+// (legacy entries have no summary).
+const blurb = inv.summary?.trim() ? inv.summary : inv.whatHappened;
+
+// Free-text sections, rendered in reader order and skipped when empty.
+const sections = [
+  { label: 'Investigation',                 body: inv.investigation },
+] as const;
+const impact = [
+  { label: 'Impact',                        body: inv.impact },
+] as const;
+const closing = [
+  { label: 'Response & Recommendations',    body: inv.response },
+  { label: 'Lessons Learned',               body: inv.lessonsLearned },
+] as const;
+---
+
+<article class:list={['case-card', compact && 'card-compact']}>
+
+  <div class="case-header">
+    <div style="flex:1;min-width:0;">
+
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <span class="case-id">{inv.id}</span>
+        {inv.severity && (
+          <span class={`severity-badge ${severityClass[inv.severity] ?? 'severity-high'}`}>{inv.severity}</span>
+        )}
+        {inv.categorisation && (
+          <span class={`cat-badge ${catClass[inv.categorisation] ?? ''}`}>{catLabel[inv.categorisation] ?? inv.categorisation}</span>
+        )}
+      </div>
+
+      <h2 class="case-title" style="font-size:1.5rem;">
+        {detailUrl
+          ? <a href={detailUrl} style="color:inherit;text-decoration:none;">{title}</a>
+          : title
+        }
+      </h2>
+
+      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:16px;">
+        {dateLabel && (
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">{dateLabel}</span>
+        )}
+        {inv.reference && (
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);">{inv.reference}</span>
+        )}
+      </div>
+
+      {compact && blurb && (
+        <div class="case-summary md-content" style="margin-top:10px;" set:html={md(blurb)} />
+      )}
+
+      {compact && detailUrl && (
+        <a href={detailUrl} class="view-link">View full investigation →</a>
+      )}
+
+    </div>
+    {inv.verified && <VerifiedBadge />}
+  </div>
+
+  {!compact && (
+    <>
+      {inv.summary?.trim() && (
+        <div class="case-section">
+          <div class="case-section-label">Summary</div>
+          <div class="case-section-content md-content" set:html={md(inv.summary)} />
+        </div>
+      )}
+
+      {assets.length > 0 && (
+        <div class="case-section">
+          <div class="case-section-label">Affected Assets</div>
+          <div class="asset-list">
+            {assets.map((a) => (
+              <div class="asset-item">
+                <span class="asset-name">{a.name}</span>
+                {a.note && <span class="asset-note">{a.note}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {inv.whatHappened?.trim() && (
+        <div class="case-section">
+          <div class="case-section-label">What Happened</div>
+          <div class="case-section-content md-content" set:html={md(inv.whatHappened)} />
+        </div>
+      )}
+
+      {timeline.length > 0 && (
+        <div class="case-section">
+          <div class="case-section-label">Timeline</div>
+          <div class="bec-timeline">
+            {timeline.map((e) => (
+              <div class="bec-timeline-item">
+                <div class="timeline-time">{e.time}</div>
+                <div class="bec-tl-right">
+                  {e.activity && <div class="bec-tl-activity">{e.activity}</div>}
+                  {e.detail && <div class="bec-tl-detail md-content" set:html={md(e.detail)} />}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sections.map((s) => s.body?.trim() && (
+        <div class="case-section">
+          <div class="case-section-label">{s.label}</div>
+          <div class="case-section-content md-content" set:html={md(s.body)} />
+        </div>
+      ))}
+
+      {inv.queries?.trim() && (
+        <div class="case-section">
+          <div class="case-section-label">Queries</div>
+          <pre class="kql-block">{inv.queries}</pre>
+        </div>
+      )}
+
+      {impact.map((s) => s.body?.trim() && (
+        <div class="case-section">
+          <div class="case-section-label">{s.label}</div>
+          <div class="case-section-content md-content" set:html={md(s.body)} />
+        </div>
+      ))}
+
+      {(inv.categorisation || inv.verdictJustification?.trim()) && (
+        <div class="case-section">
+          <div class="case-section-label">Verdict</div>
+          {inv.categorisation && (
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <span class={`cat-badge ${catClass[inv.categorisation] ?? ''}`}>{catLabel[inv.categorisation] ?? inv.categorisation}</span>
+            </div>
+          )}
+          {inv.verdictJustification?.trim() && (
+            <div class="case-section-content md-content" set:html={md(inv.verdictJustification)} />
+          )}
+        </div>
+      )}
+
+      {closing.map((s) => s.body?.trim() && (
+        <div class="case-section">
+          <div class="case-section-label">{s.label}</div>
+          <div class="case-section-content md-content" set:html={md(s.body)} />
+        </div>
+      ))}
+
+      {customSections.map((s) => (
+        <div class="case-section">
+          {s.title && <div class="case-section-label">{s.title}</div>}
+          <div class="case-section-content md-content" set:html={md(s.content)} />
+        </div>
+      ))}
+
+      {tools.length > 0 && (
+        <div class="case-section">
+          <div class="case-section-label">Tools Used</div>
+          <div class="tools-list">
+            {tools.map((t) => <span class="tool-tag">{t}</span>)}
+          </div>
+        </div>
+      )}
+    </>
+  )}
+
+</article>

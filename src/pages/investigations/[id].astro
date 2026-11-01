@@ -1,0 +1,35 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import InvestigationCard from '../../components/InvestigationCard.astro';
+import { portfolio, routable } from '../../utils/portfolio';
+import { mdToText } from '../../utils/md';
+
+export const getStaticPaths = (() =>
+  routable(portfolio.investigations).map((inv) => ({
+    params: { id: String(inv.id).trim() },
+    props: { investigation: inv },
+  }))
+) satisfies GetStaticPaths;
+
+const { investigation } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+const name = portfolio.profile.name ?? '';
+const title = investigation.title?.trim() || 'Investigation';
+const pageTitle = `${investigation.id} — ${title} — ${name}`;
+const pageDescription = mdToText(investigation.summary) || mdToText(investigation.whatHappened)
+  || [investigation.severity && `${investigation.severity} severity`, `investigated by ${name}`]
+       .filter(Boolean).join(' · ');
+---
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <div style="margin-bottom:32px;">
+    <a
+      href={base}
+      style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dimmer);text-decoration:none;letter-spacing:0.08em;"
+    >
+      ← {name}
+    </a>
+  </div>
+
+  <InvestigationCard investigation={investigation} />
+</BaseLayout>

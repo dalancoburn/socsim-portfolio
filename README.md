@@ -40,7 +40,7 @@ Every time you complete an investigation in the SOCSIM lab:
 
 1. Open **`https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/editor.html`**
 2. Click **⬇ Load from GitHub** — loads all your existing work
-3. Click **+ Add Alert Investigation** or **+ Add BEC Case Drop**
+3. Click **+ Add Investigation** or **+ Add BEC Case Drop**
 4. Fill in the fields — Markdown is supported in all narrative sections (bold, bullets, code blocks, images)
 5. Click **⬆ Publish to GitHub**
 6. Wait ~60 seconds → live
@@ -65,6 +65,8 @@ Manual alternative:
 
 `src/data/portfolio.json` — keep this schema unchanged so portfolios stay compatible with the future WDLabs directory.
 
+**Older formats.** Before schema v3, write-ups were stored as `alerts[]`. Member data is never rewritten by a template update, so the site and editor both run every portfolio through `src/utils/migrate.js` (served to the editor at `/migrate.js`), which converts legacy alerts into investigations without dropping any field. Old `/alerts/<id>/` links redirect to `/investigations/<id>/`. Change the schema only by adding a new migration step there, with tests.
+
 | Field | Type | Notes |
 |---|---|---|
 | `profile.name` | string | Full name |
@@ -76,23 +78,23 @@ Manual alternative:
 | `profile.links.linkedin` | string | URL or empty |
 | `profile.links.github` | string | URL or empty |
 | `profile.links.email` | string | Email address or empty |
-| `alerts[].id` | string | Unique, URL-safe — e.g. `ALT-001` |
-| `alerts[].alertName` | string | Alert title as shown in the tool |
-| `alerts[].date` / `dateTime` | string | Investigation date / when the alert fired |
-| `alerts[].severity` | string | `Critical` / `High` / `Medium` / `Low` |
-| `alerts[].hostOrAccount` | string | Affected asset |
-| `alerts[].whatTriggered` / `whyTriggered` | string | Trigger + detection logic (Markdown ok) |
-| `alerts[].whatHappened` / `evidence` | string | Narrative + artefacts (Markdown ok) |
-| `alerts[].wasSuccessful` | string | `Yes` / `No` / `Unknown` |
-| `alerts[].verdict` / `verdictJustification` | string | `Malicious` / `Non-malicious` / `Suspicious` + reasoning |
-| `alerts[].categorisation` | string | `TP` / `BTP` / `FP` |
-| `alerts[].investigationSteps[]` | string[] | Ordered walkthrough |
-| `alerts[].queries` | string | Raw KQL, line breaks preserved |
-| `alerts[].escalation` / `alertTuning` / `containment` | string | Recommended actions |
-| `alerts[].lessonsLearned` | string | Markdown ok |
-| `alerts[].tools[]` | string[] | Tool names |
-| `alerts[].customSections[]` | `{title, content}` | Optional member-defined sections (Markdown) |
-| `alerts[].verified` | boolean | `true` = SOCSIM lab verified |
+| `schemaVersion` | number | `3` — written by the editor; older files have none |
+| `investigations[].id` | string | Unique, URL-safe — e.g. `INV-001` |
+| `investigations[].title` | string | Short descriptive title |
+| `investigations[].reference` | string | Optional — e.g. the Defender incident or alert name |
+| `investigations[].date` | string | ISO date investigated (used for sorting) |
+| `investigations[].severity` | string | `Critical` / `High` / `Medium` / `Low` |
+| `investigations[].categorisation` | string | Verdict: `TP` / `BTP` / `FP` |
+| `investigations[].summary` | string | Plain-English summary, shown on the homepage card (Markdown ok) |
+| `investigations[].affectedAssets[]` | `{name, note}` | Devices, servers, accounts, mailboxes… |
+| `investigations[].whatHappened` | string | Main write-up (Markdown ok) |
+| `investigations[].timeline[]` | `{time, activity, detail}` | Chronological entries; `detail` is Markdown |
+| `investigations[].investigation` | string | Pivots, hunting, leads followed (Markdown ok) |
+| `investigations[].queries` | string | Raw KQL, line breaks preserved |
+| `investigations[].impact` / `verdictJustification` / `response` / `lessonsLearned` | string | Markdown ok |
+| `investigations[].tools[]` | string[] | Tool names |
+| `investigations[].customSections[]` | `{title, content}` | Optional member-defined sections (Markdown) |
+| `investigations[].verified` | boolean | `true` = SOCSIM lab verified |
 | `bec[].id` | string | Unique, URL-safe — e.g. `BEC-001` |
 | `bec[].caseName` / `caseReference` | string | Title + WDLabs reference |
 | `bec[].affectedAccount` | string | Compromised account |
@@ -119,11 +121,21 @@ npm run build      # static output → dist/
 npm run preview    # preview the build
 ```
 
+### Tests
+
+```bash
+npm test             # migration unit tests — incl. "no member text is ever lost"
+npm run test:build   # builds the site against every file in tests/fixtures/ and checks the pages
+npm run build && npm run test:editor   # drives the real editor in headless Chromium, GitHub API faked
+```
+
+`test:editor` needs Python Playwright (the script points at a local venv — adjust the path in `package.json` for your machine). Add a fixture to `tests/fixtures/` for any new data shape you need to support.
+
 ---
 
 ## Case ID convention
 
-Alert investigations: `ALT-001`, `ALT-002`, … BEC case drops: `BEC-001`, `BEC-002`, …
+Investigations: `INV-001`, `INV-002`, … BEC case drops: `BEC-001`, `BEC-002`, … (older `ALT-` IDs carry over unchanged)
 IDs become URLs, so stick to letters, numbers, dashes, dots and underscores — the editor enforces this on publish. This keeps IDs unique and sortable across the future central directory.
 
 ---

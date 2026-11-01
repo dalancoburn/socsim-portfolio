@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "test": "node --test tests/*.test.mjs",
+    "test:build": "node tests/build-fixtures.mjs",
+    "test:editor": "LD_LIBRARY_PATH=$HOME/.local/lib/browser-deps $HOME/.local/venvs/webapp-testing/bin/python tests/editor.e2e.py"
   },
   "dependencies": {
     "astro": "^4.16.18",
-    "marked": "^18.0.5"
+    "marked": "18.1.1"
   }
 }

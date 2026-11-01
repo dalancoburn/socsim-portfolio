@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import portfolio from '../data/portfolio.json';
+import { portfolio } from '../utils/portfolio';
 
 interface Props {
   title: string;
@@ -15,16 +15,15 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 // Default description is auto-computed from the portfolio so shared links
 // (especially on LinkedIn) get a meaningful preview without member effort.
 const isTemplate = !portfolio.profile.name || portfolio.profile.name.startsWith('[');
-const data = portfolio as Record<string, any>;
-const nAlerts   = (data.alerts ?? []).length;
-const nBec      = (data.bec ?? []).length;
-const nVerified = [...(data.alerts ?? []), ...(data.bec ?? [])].filter((c: any) => c.verified).length;
+const nInv      = portfolio.investigations.length;
+const nBec      = portfolio.bec.length;
+const nVerified = [...portfolio.investigations, ...portfolio.bec].filter((c: any) => c?.verified).length;
 
 const defaultDescription = isTemplate
-  ? 'A SOCSIM member portfolio — documented alert investigations and BEC case drops from The SOC Simulation Project lab.'
+  ? 'A SOCSIM member portfolio — documented security investigations and BEC case drops from The SOC Simulation Project lab.'
   : [
       `${portfolio.profile.name}${portfolio.profile.role ? ' · ' + portfolio.profile.role : ''}.`,
-      `${nAlerts} alert investigation${nAlerts === 1 ? '' : 's'} · ${nBec} BEC case drop${nBec === 1 ? '' : 's'}` +
+      `${nInv} investigation${nInv === 1 ? '' : 's'} · ${nBec} BEC case drop${nBec === 1 ? '' : 's'}` +
         (nVerified ? ` · ${nVerified} SOCSIM lab-verified` : '') + '.',
     ].join(' ');
 
