@@ -189,9 +189,16 @@
     .guide summary::-webkit-details-marker{display:none}
     .guide summary::before{content:'▸';transition:transform .15s}
     .guide[open] summary::before{transform:rotate(90deg)}
-    .guide ul{margin:8px 0 4px;padding:10px 14px 10px 28px;background:var(--surface-2);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:4px;color:var(--text-dim);line-height:1.6}
+    .guide ul{margin:8px 0 4px;padding:10px 14px 10px 28px;background:var(--surface-2);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:4px;color:var(--text-dim,#c4c4c4);line-height:1.6}
     .guide li{margin-bottom:4px}
     .guide li:last-child{margin-bottom:0}
+    .guide-body{margin:8px 0 4px;padding:12px 16px;background:var(--surface-2);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:4px;color:var(--text-dim,#c4c4c4);line-height:1.6;max-width:78ch}
+    .guide-body p{margin:0 0 8px}
+    .guide-body ul{margin:0 0 10px;padding:0 0 0 20px;background:none;border:0;border-radius:0}
+    .guide-body blockquote{margin:0 0 10px;padding:8px 12px;border-left:2px solid var(--border);font-style:italic}
+    .guide-body blockquote p:last-child,.guide-body>:last-child{margin-bottom:0}
+    .guide-body code{font-family:'JetBrains Mono',monospace;font-size:.72rem}
+    .guide-body strong{color:var(--text)}
     .rep-cell{display:flex;flex-direction:column;gap:3px}
     .rep-cell-label{font-family:'JetBrains Mono',monospace;font-size:.54rem;color:var(--dimmer);letter-spacing:.1em;text-transform:uppercase}
     .rep-remove{align-self:flex-end;padding-bottom:1px}
@@ -817,6 +824,80 @@ function invBlockHTML(uid, num) {
 /* ═══════════════════════════════════════════════════
    BEC BLOCK TEMPLATE
 ═══════════════════════════════════════════════════ */
+/* BEC report-writing guidance (WDLabs DFIR report standard). Fixed, trusted
+   HTML written here — never user input. Collapsed by default. */
+const BEC_GUIDES = {
+  general: `
+    <p><strong>Facts first, opinion second.</strong> A DFIR report is a factual document. State what the evidence shows, then give your professional opinion on what happened and why. Keep the two clearly separated.</p>
+    <p><strong>Don't assume.</strong> If you can't prove something, don't state it as fact. Attribute a likelihood instead, for example: "It is likely the user clicked the link in the phishing email." Use consistent confidence language:</p>
+    <ul>
+      <li><strong>Confirmed:</strong> directly supported by log evidence</li>
+      <li><strong>Likely:</strong> strongly supported by the evidence, but not directly proven</li>
+      <li><strong>Possible:</strong> consistent with the evidence, but other explanations exist</li>
+    </ul>
+    <p><strong>Structure each finding the same way:</strong> the facts and details → what it does functionally → your opinion on why the threat actor did it and what they were trying to achieve → the end result</p>
+    <p><strong>Example in practice:</strong></p>
+    <blockquote>
+      <p>On [DATE/TIME], an email with the subject '[SUBJECT]' was sent from [SENDER] to [RECIPIENT] from IP address [DEFANGED_IP]. The email imitated a SharePoint file sharing notification. Analysis of the email identified a suspicious URL, '[DEFANGED_URL]', which was unresolvable at the time of analysis.</p>
+      <p>At [DATE/TIME], the email was opened by the legitimate user of the mailbox. Shortly after, at [DATE/TIME], an unauthorised sign-in to the [NAME] Account occurred from IP address [DEFANGED_IP].</p>
+      <p>It is likely that initial access occurred via the phishing email sent from [SENDER] with the subject '[SUBJECT]'.</p>
+    </blockquote>
+    <p><strong>Formatting conventions:</strong></p>
+    <ul>
+      <li><strong>IPs:</strong> defang them and add context, for example <code>127[.]0[.]0[.]1</code> (ISP/Provider, Country).</li>
+      <li><strong>URLs and domains:</strong> defang them, for example <code>hxxps://example[.]com</code>.</li>
+      <li><strong>Timestamps:</strong> use one format and one timezone throughout the report, and state the timezone once in Case Details.</li>
+      <li><strong>Accounts:</strong> define accounts you refer to often the first time you mention them, then use the short name. For example: natasha.romanenko@wdlabs.com.au (the Natasha Account).</li>
+    </ul>
+    <p><strong>Use screenshots.</strong> Screenshots help anywhere a visual explains things faster than text, especially malicious email contents. Feel free to get creative, for example a visual attack timeline.</p>
+    <p><strong>Know what your evidence means before you report it.</strong> Research any event type you aren't certain about. For example:</p>
+    <ul>
+      <li>What exactly is the difference between FileAccessed, FilePreviewed and FileDownloaded? Do they all represent data access in the same way?</li>
+      <li>Does each MailItemsAccessed event represent one email, or can one event cover multiple emails?</li>
+    </ul>
+    <p>If you get this wrong, your data access numbers are wrong, and data access is what the client cares about most.</p>`,
+  caseDetails: `
+    <p>Record the incident ID, the affected user(s), the incident date range, the report date, and the timezone used throughout the report. Define your account short names here if you haven't already.</p>`,
+  attackNarrative: `
+    <p>Give a very high-level overview of what happened. It should read like a mini-story.</p>
+    <p>Cover:</p>
+    <ul>
+      <li>the incident date range</li>
+      <li>how the threat actor got initial access</li>
+      <li>what they did with that access</li>
+    </ul>
+    <p>Keep the detail for the Findings. A reader should understand the whole incident from this section alone.</p>`,
+  timeline: `
+    <p>The timeline shows the order the attack unfolded in and what happened at each point.</p>
+    <ul>
+      <li>Facts only. Don't comment on or interpret activity here. That belongs in the Findings.</li>
+      <li>Summarise high-volume activity with a count and a time range, for example: "Between [TIME] and [TIME], 150 emails were accessed from the Natasha Account."</li>
+      <li>Aim for 5–15 entries. If you have more, summarise further.</li>
+      <li>Cover the full incident, from at or before initial access (for example, when the phishing email was received) through to remediation and containment.</li>
+    </ul>`,
+  initialAccess: `
+    <p>How did the threat actor gain access?</p>
+    <ul>
+      <li>State the method of initial access.</li>
+      <li>Analyse any phishing emails the user interacted with: what they contained, what they did, and how they likely led to the account compromise.</li>
+      <li>Include the initial access sign-in: the first unauthorised sign-in event.</li>
+    </ul>`,
+  unauthorisedActivity: `
+    <p>What did the threat actor primarily do with their access? For example: did they create or modify inbox rules? Did they send emails?</p>
+    <p>Don't just list the activity. For each action, explain why the threat actor likely did it and what it achieved.</p>`,
+  dataAccess: `
+    <p>This is one of the most important sections of the report. What data, if any, did the threat actor access?</p>
+    <ul>
+      <li>Did they access emails or download files? How many?</li>
+      <li>Was any mailbox sync activity identified? If so, what does it mean for what you can and can't say about which emails were accessed? (Hint: look at the Bind and Sync access types in MailItemsAccessed.)</li>
+    </ul>
+    <p>Be explicit about the limits of the evidence. If you can't determine exactly which items were accessed, say so, and state what you can say instead.</p>`,
+  lessonsLearned: `
+    <p>Write about your own investigation, not the attack. What took longer than it should have? What would you check first next time? What did you get wrong, then correct?</p>`,
+};
+const becGuide = (key, label = 'Writing guidance') =>
+  `<details class="guide"><summary>${label}</summary><div class="guide-body">${BEC_GUIDES[key]}</div></details>`;
+
 function becBlockHTML(uid, num) {
   return `<div class="inv-block" data-uid="${uid}" data-type="bec">
   <div class="inv-block-header" onclick="toggleBlock('${uid}')" title="Click to collapse / expand">
@@ -829,6 +910,12 @@ function becBlockHTML(uid, num) {
   <div class="inv-body">
 
     <div class="inv-sub">
+      ${becGuide('general', 'Report writing guide — read this first')}
+    </div>
+
+    <div class="inv-sub">
+      <div class="sub-label">Case Details</div>
+      ${becGuide('caseDetails')}
       <div class="form-row four">
         <div class="form-field">
           <label class="form-label">Case ID</label>
@@ -875,6 +962,7 @@ function becBlockHTML(uid, num) {
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Attack Narrative <span class="form-hint">plain-English summary — write this last, from a non-technical perspective</span></label>
+          ${becGuide('attackNarrative')}
           <textarea class="form-textarea" data-f="attackNarrative" rows="5" placeholder="What happened, how, and the outcome. Keep it clear enough for a non-technical stakeholder."></textarea>
         </div>
       </div>
@@ -884,6 +972,7 @@ function becBlockHTML(uid, num) {
 
     <div class="inv-sub">
       <div class="sub-label">Timeline of Events <span class="form-hint" style="margin-left:6px;">UTC throughout</span></div>
+      ${becGuide('timeline')}
       <div class="rep-rows" data-rep="timeline"></div>
       <button class="btn btn-add btn-sm" onclick="addBECTimelineRow(this)">+ Add Timeline Entry</button>
     </div>
@@ -895,18 +984,21 @@ function becBlockHTML(uid, num) {
       <div class="form-row full" style="margin-bottom:12px;">
         <div class="form-field">
           <label class="form-label">3.1 — Initial Access</label>
+          ${becGuide('initialAccess')}
           <textarea class="form-textarea" data-f="initialAccess" rows="4" placeholder="How did the threat actor gain access? First confirmed malicious sign-in, source IP, application used."></textarea>
         </div>
       </div>
       <div class="form-row full" style="margin-bottom:12px;">
         <div class="form-field">
           <label class="form-label">3.2 — Unauthorised Activity</label>
+          ${becGuide('unauthorisedActivity')}
           <textarea class="form-textarea" data-f="unauthorisedActivity" rows="4" placeholder="What did the threat actor do once inside? Inbox rules, sent emails, account changes, etc."></textarea>
         </div>
       </div>
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">3.3 — Data Access</label>
+          ${becGuide('dataAccess')}
           <textarea class="form-textarea" data-f="dataAccess" rows="4" placeholder="What data was accessed or potentially exfiltrated? Cover Exchange and SharePoint/OneDrive separately."></textarea>
         </div>
       </div>
@@ -918,6 +1010,7 @@ function becBlockHTML(uid, num) {
       <div class="form-row full">
         <div class="form-field">
           <label class="form-label">Lessons Learned</label>
+          ${becGuide('lessonsLearned')}
           <textarea class="form-textarea" data-f="lessonsLearned" rows="3" placeholder="What would you approach differently? What does this case teach you?"></textarea>
         </div>
       </div>
